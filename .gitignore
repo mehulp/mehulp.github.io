@@ -1,0 +1,5 @@
+private/
+site/index.html
+site/content.json
+__pycache__/
+.venv/
