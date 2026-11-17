@@ -1,5 +1,5 @@
 private/
-site/index.html
-site/content.json
+site/graph-data.js
+site/pages-data.js
 __pycache__/
 .venv/
