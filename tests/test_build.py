@@ -29,3 +29,11 @@ def test_links_between_pages_become_ref_edges():
     nodes, links = build.build_graph(pages)
     refs = {(l["source"], l["target"]) for l in links if l["type"] == "ref"}
     assert ("about/index", "projects/job-copilot") in refs
+
+def test_every_section_is_linked_to_the_home_node():
+    # The centre node keeps every section connected, so none can float off alone.
+    pages = [p for p in build.read_pages(FIXTURES) if build.is_public(p)]
+    nodes, links = build.build_graph(pages)
+    assert sum(1 for n in nodes if n["kind"] == "home") == 1
+    hubs = {l["target"] for l in links if l["type"] == "hub" and l["source"] == "home"}
+    assert hubs == {"section:" + k for k in build.SECTION_TITLES}

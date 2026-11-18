@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mehul Patankar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1513; --panel: #151d1a; --panel-2: #1b2522; --ink: #e6ece9; --quiet: #93a39c;
+    --line: #2a3632; --accent: #7fd1b9; --chip: #22302b; --shadow: 0 10px 40px rgba(0,0,0,.45);
+    --ui: Inter, system-ui, sans-serif; --read: 'Source Serif 4', Georgia, serif; --head: 'Source Serif 4', Georgia, serif;
+    --radius: 14px; --side: 380px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: var(--ui); overflow: hidden; }
+  #graph { position: fixed; inset: 0; }
+  body.split #graph { left: var(--side); }
+  header { position: fixed; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 10px;
+    padding: 14px 18px; z-index: 6; pointer-events: none; }
+  header > * { pointer-events: auto; }
+  body.split header { left: var(--side); }
+  .brand { font-weight: 600; font-size: 15px; }
+  .brand small { display: block; font-weight: 400; color: var(--quiet); font-size: 12.5px; margin-top: 2px; }
+  body.split .brand { visibility: hidden; }
+  .spacer { flex: 1; }
+  .search { position: relative; }
+  .search input { width: 230px; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--ink); font: inherit; font-size: 13.5px; outline: none; }
+  .search input:focus { border-color: var(--accent); }
+  .results { position: absolute; top: 42px; right: 0; width: 300px; max-height: 320px; overflow: auto;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); display: none; z-index: 8; }
+  .results button { display: block; width: 100%; text-align: left; padding: 9px 12px; border: 0; background: none;
+    color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
+  .results button:hover, .results button.active { background: var(--panel-2); }
+  .results .kind { color: var(--quiet); font-size: 11.5px; margin-left: 6px; }
+  .btn { padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel);
+    color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; background: var(--panel); padding: 7px 11px; font: inherit; font-size: 12.5px; color: var(--ink); cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button.on { background: var(--panel-2); color: var(--accent); font-weight: 600; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+  #latest { position: fixed; left: 18px; bottom: 18px; width: 300px; padding: 14px 16px; z-index: 4; }
+  h3.lbl { margin: 0 0 8px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--quiet); font-weight: 600; }
+  h3.lbl span { text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .latest a { display: block; color: var(--ink); text-decoration: none; padding: 7px 0; font-size: 13.5px; border-top: 1px solid var(--line); cursor: pointer; }
+  .latest a:first-of-type { border-top: 0; }
+  .latest a span { display: block; color: var(--quiet); font-size: 11.5px; margin-top: 2px; }
+  #legend { position: fixed; right: 18px; bottom: 18px; padding: 12px 14px; z-index: 4; font-size: 12.5px; }
+  .legendItems > div { display: flex; align-items: center; gap: 8px; margin: 5px 0; cursor: pointer; font-size: 13px; }
+  .legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  body.split #latest, body.split #legend, body.split .proto-note { display: none; }
+  #side { display: none; position: fixed; left: 0; top: 0; bottom: 0; width: var(--side); background: var(--panel);
+    border-right: 1px solid var(--line); padding: 28px 28px 24px; overflow: auto; z-index: 5; }
+  body.split #side { display: block; }
+  #side h1 { font-family: var(--head); font-size: 30px; line-height: 1.15; margin: 0 0 6px; font-weight: 600; }
+  #side .role { color: var(--quiet); font-size: 14px; margin-bottom: 18px; }
+  #side p { font-family: var(--read); font-size: 15.5px; line-height: 1.55; margin: 0 0 22px; }
+  #side .block { margin-bottom: 22px; }
+  #panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100%); background: var(--panel);
+    border-left: 1px solid var(--line); box-shadow: var(--shadow); z-index: 10; transform: translateX(105%);
+    transition: transform .28s ease; display: flex; flex-direction: column; }
+  #panel.open { transform: none; }
+  #panel .top { display: flex; align-items: center; gap: 8px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  #panel .crumb { color: var(--quiet); font-size: 12.5px; flex: 1; }
+  #panel .body { overflow: auto; padding: 22px 26px 40px; }
+  #panel h1 { font-family: var(--head); font-weight: 600; font-size: 28px; line-height: 1.2; margin: 0 0 8px; }
+  #panel .meta, .meta { color: var(--quiet); font-size: 12.5px; margin-bottom: 14px; }
+  #panel .content { font-family: var(--read); font-size: 17px; line-height: 1.6; }
+  #panel .content p { margin: 0 0 14px; }
+  #panel .content table { border-collapse: collapse; margin: 0 0 14px; font-size: 15px; }
+  #panel .content th, #panel .content td { border: 1px solid var(--line); padding: 5px 10px; text-align: left; }
+  #panel .content a { color: var(--accent); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 18px; }
+  .chip { background: var(--chip); color: var(--ink); border: 0; border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+  .chip:hover { color: var(--accent); }
+  .connected { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 16px; }
+  .connected h4 { margin: 0 0 8px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--quiet); }
+  .connected button { display: block; width: 100%; text-align: left; background: none; border: 0; color: var(--ink);
+    font: inherit; font-size: 14px; padding: 7px 0; border-top: 1px solid var(--line); cursor: pointer; }
+  .connected button:hover { color: var(--accent); }
+  .connected button span { color: var(--quiet); font-size: 12px; margin-left: 6px; }
+  .proto-note { position: fixed; top: 64px; left: 18px; z-index: 4; font-size: 12px; color: var(--quiet);
+    background: var(--panel); border: 1px dashed var(--line); border-radius: 8px; padding: 6px 10px; max-width: 320px; }
+  #list { position: fixed; inset: 64px 0 0 0; overflow: auto; padding: 10px 18px 40px; display: none; z-index: 3; background: var(--bg); }
+  body.split #list { left: var(--side); }
+  #list section { max-width: 720px; margin: 0 auto 22px; }
+  #list h2 { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+  #list h2 i { width: 10px; height: 10px; border-radius: 50%; }
+  #list a { display: block; padding: 12px 14px; margin: 6px 0; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; color: var(--ink); text-decoration: none; cursor: pointer; }
+  #list a span { display: block; color: var(--quiet); font-size: 13px; margin-top: 3px; }
+  body.listmode #list { display: block; }
+  body.listmode #latest, body.listmode #legend, body.listmode .proto-note { display: none; }
+  #options { position: fixed; top: 64px; right: 18px; width: 360px; padding: 16px 18px; z-index: 9; display: none; }
+  #options.open { display: block; }
+  #options .row { margin-bottom: 14px; }
+  #options .row h3 { margin-bottom: 6px; }
+  #options .hint { color: var(--quiet); font-size: 12px; margin-top: 5px; line-height: 1.4; }
+  #options .choice { font-size: 12.5px; background: var(--panel-2); border-radius: 8px; padding: 8px 10px; margin: 6px 0 10px; }
+  .tip { font-family: var(--ui); background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 10px; max-width: 260px; font-size: 12.5px; line-height: 1.4; }
+  .tip b { display: block; font-size: 13px; margin-bottom: 2px; }
+  .tip span { color: var(--quiet); }
+  @media (max-width: 720px) {
+    body.split #graph, body.split header, body.split #list { left: 0; }
+    body.split #side { display: none; }
+    body.split .brand { visibility: visible; }
+    header { flex-wrap: wrap; padding: 10px 12px; }
+    .search input { width: 100%; }
+    .search { order: 5; width: 100%; }
+    .results { width: 100%; }
+    #latest, #legend, .proto-note { display: none; }
+    #list { inset: 150px 0 0 0; }
+    #options { left: 12px; right: 12px; width: auto; top: 150px; }
+    #panel h1 { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+<div id="graph"></div>
+<aside id="side">
+  <h1>Mehul Patankar</h1>
+  <div class="role">Engineering manager, back to building</div>
+  <p>Fifteen years of writing code, then engineering leadership. Now I'm building again, because AI is changing what leading engineers needs. This is where the work lives.</p>
+  <div class="block latest"><h3 class="lbl">Latest</h3><div class="latestItems"></div></div>
+  <div class="block legend"><h3 class="lbl">Sections</h3><div class="legendItems"></div></div>
+</aside>
+<header>
+  <div class="brand">Mehul Patankar<small>Engineering manager, back to building</small></div>
+  <div class="spacer"></div>
+  <div class="seg" role="group" aria-label="View">
+    <button id="viewGraph" class="on">Graph</button>
+    <button id="viewList">List</button>
+  </div>
+  <button class="btn primary" id="optBtn">Appearance</button>
+  <div class="search">
+    <input id="q" type="search" placeholder="Search pages and tags" autocomplete="off" aria-label="Search">
+    <div class="results" id="results"></div>
+  </div>
+</header>
+<div id="latest" class="card latest"><h3 class="lbl">Latest</h3><div class="latestItems"></div></div>
+<div id="legend" class="card legend"><h3 class="lbl">Sections</h3><div class="legendItems"></div></div>
+<div id="list"></div>
+<div id="options" class="card" role="dialog" aria-label="Appearance">
+  <div class="row"><h3 class="lbl">Style</h3><div class="seg" data-opt="style"></div><div class="hint" id="styleHint"></div></div>
+  <div class="row"><h3 class="lbl">Layout</h3><div class="seg" data-opt="layout"></div><div class="hint">Floating: the graph fills the screen, with small cards. Split: an intro column on the left, the graph beside it.</div></div>
+  <div class="row"><h3 class="lbl">Depth</h3><div class="seg" data-opt="depth"></div><div class="hint">2D is flatter and easier to read; 3D rotates.</div></div>
+  <div class="row"><h3 class="lbl">Motion</h3><div class="seg" data-opt="motion"></div><div class="hint">Flowing sends small dots along the links between pages.</div></div>
+  <button class="btn" id="resetOpt">Reset to default</button> <button class="btn" id="closeOpt">Close</button>
+</div>
+<aside id="panel" aria-live="polite">
+  <div class="top"><div class="crumb" id="crumb"></div><button class="btn" id="copyBtn">Copy link</button><button class="btn" id="closeBtn" aria-label="Close">Close</button></div>
+  <div class="body" id="panelBody"></div>
+</aside>
+
+<script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1.80.1/dist/3d-force-graph.min.js"></script>
+<!-- Loads the two files build.py writes, so window.GRAPH_DATA and window.PAGES_DATA exist. -->
+<script src="graph-data.js"></script>
+<script src="pages-data.js"></script>
+<script>
+// ---------- design options ----------
+const STYLES = {
+  night: { name: 'Night', hint: 'Dark green-black, soft colours. Close to secondbrainos.dev.',
+    vars: { bg:'#0f1513', panel:'#151d1a', 'panel-2':'#1b2522', ink:'#e6ece9', quiet:'#93a39c', line:'#2a3632', accent:'#7fd1b9', chip:'#22302b', shadow:'0 10px 40px rgba(0,0,0,.45)',
+      ui:"Inter, system-ui, sans-serif", read:"'Source Serif 4', Georgia, serif", head:"'Source Serif 4', Georgia, serif", radius:'14px' },
+    sec: { about:'#f2c14e', projects:'#7fd1b9', journal:'#8fb3ff', blog:'#f08a7e', 'system-design':'#c39bff' },
+    tag:'#6f7f78', dim:'#26302d', link:'rgba(140,160,152,0.28)', ref:'rgba(200,225,215,0.75)', fade:'rgba(80,95,90,0.12)', particle:'#d8efe7' },
+  paper: { name: 'Paper', hint: 'Warm off-white, like a notebook. Calm and very readable.',
+    vars: { bg:'#f6f3ec', panel:'#fffdf8', 'panel-2':'#f1ede3', ink:'#1f2421', quiet:'#6b716c', line:'#e2ddd0', accent:'#2f7d68', chip:'#ece7da', shadow:'0 10px 30px rgba(60,50,30,.12)',
+      ui:"Inter, system-ui, sans-serif", read:"'Source Serif 4', Georgia, serif", head:"'Source Serif 4', Georgia, serif", radius:'14px' },
+    sec: { about:'#b8860b', projects:'#2f7d68', journal:'#3d5fa8', blog:'#b54a3c', 'system-design':'#7a4fc0' },
+    tag:'#a39d8e', dim:'#e4dfd3', link:'rgba(120,110,90,0.28)', ref:'rgba(60,70,65,0.6)', fade:'rgba(150,140,120,0.15)', particle:'#2f7d68' },
+  blueprint: { name: 'Blueprint', hint: 'Engineering drawing: deep blue, white lines, monospace type.',
+    vars: { bg:'#0b1f3a', panel:'#0f2747', 'panel-2':'#14345e', ink:'#e8f1ff', quiet:'#8fb0d9', line:'#24497a', accent:'#5ad1ff', chip:'#173b69', shadow:'0 10px 40px rgba(0,10,30,.5)',
+      ui:"'IBM Plex Sans', system-ui, sans-serif", read:"'IBM Plex Sans', system-ui, sans-serif", head:"'IBM Plex Mono', ui-monospace, monospace", radius:'4px' },
+    sec: { about:'#ffd166', projects:'#5ad1ff', journal:'#ffffff', blog:'#ff8fa3', 'system-design':'#b8f2a6' },
+    tag:'#4f74a6', dim:'#16335a', link:'rgba(120,170,230,0.35)', ref:'rgba(220,235,255,0.85)', fade:'rgba(60,100,160,0.15)', particle:'#5ad1ff' },
+  neon: { name: 'Neon', hint: 'Near-black with bright colours. Bold and techy, best with Flowing.',
+    vars: { bg:'#050507', panel:'#0d0d12', 'panel-2':'#17171f', ink:'#f2f2f7', quiet:'#8a8aa0', line:'#23232e', accent:'#ff4fd8', chip:'#1a1a24', shadow:'0 10px 40px rgba(0,0,0,.6)',
+      ui:"'Space Grotesk', system-ui, sans-serif", read:"Inter, system-ui, sans-serif", head:"'Space Grotesk', system-ui, sans-serif", radius:'16px' },
+    sec: { about:'#ffe14f', projects:'#39f3bb', journal:'#4fb3ff', blog:'#ff4fd8', 'system-design':'#a06bff' },
+    tag:'#4a4a5e', dim:'#15151c', link:'rgba(130,130,170,0.3)', ref:'rgba(255,255,255,0.7)', fade:'rgba(60,60,80,0.15)', particle:'#ffffff' },
+  mono: { name: 'Mono', hint: 'White, black and one orange accent. Minimal, like a printed page.',
+    vars: { bg:'#ffffff', panel:'#ffffff', 'panel-2':'#f4f4f4', ink:'#111111', quiet:'#6b6b6b', line:'#e6e6e6', accent:'#e4572e', chip:'#f1f1f1', shadow:'0 8px 24px rgba(0,0,0,.08)',
+      ui:"Inter, system-ui, sans-serif", read:"'Source Serif 4', Georgia, serif", head:"Inter, system-ui, sans-serif", radius:'6px' },
+    sec: { about:'#e4572e', projects:'#111111', journal:'#4d4d4d', blog:'#8a8a8a', 'system-design':'#b5b5b5' },
+    tag:'#d0d0d0', dim:'#f0f0f0', link:'rgba(0,0,0,0.12)', ref:'rgba(0,0,0,0.55)', fade:'rgba(0,0,0,0.05)', particle:'#e4572e' }
+};
+const OPTIONS = {
+  style:  { night:'Night', paper:'Paper', blueprint:'Blueprint', neon:'Neon', mono:'Mono' },
+  layout: { floating:'Floating', split:'Split' },
+  depth:  { d3:'3D', d2:'2D' },
+  motion: { still:'Still', flow:'Flowing' }
+};
+const DEFAULTS = { style:'paper', layout:'floating', depth:'d3', motion:'flow' };
+let opt = Object.assign({}, DEFAULTS);
+try { Object.assign(opt, JSON.parse(localStorage.getItem('portal-appearance') || '{}')); } catch (e) {}
+const S = () => STYLES[opt.style];
+
+const SECTIONS = {
+  about: { title: 'About' }, projects: { title: 'Projects' }, journal: { title: 'Journal' },
+  blog: { title: 'Blog' }, 'system-design': { title: 'System design' }
+};
+
+// ---------- data: written by tools/build.py into graph-data.js and pages-data.js ----------
+const nodes = window.GRAPH_DATA.nodes, links = window.GRAPH_DATA.links, byId = {};
+nodes.forEach(n => { byId[n.id] = n; n.neighbors = new Set(); n.edges = []; });
+// Tells each bubble who its neighbours are; highlighting and "Connected to" read these.
+links.forEach(l => {
+  const a = byId[l.source], b = byId[l.target];
+  a.neighbors.add(b); b.neighbors.add(a); a.edges.push(l); b.edges.push(l);
+});
+const pageNodes = nodes.filter(n => n.kind === 'page');
+
+// ---------- step 8: search and the Latest list ----------
+function searchNodes(text) {
+  // Up to 8 pages, tags or sections whose title, summary or tags contain the text, any case.
+  const s = text.trim().toLowerCase();
+  if (!s) return [];
+  return nodes.filter(n => n.kind !== 'home' && (
+    n.title.toLowerCase().includes(s) ||
+    (n.summary || '').toLowerCase().includes(s) ||
+    (n.tags || []).some(t => t.includes(s))
+  )).slice(0, 8);
+}
+function latestPages(count) {
+  // The newest dated pages, newest first, for the Latest card.
+  return pageNodes
+    .filter(n => n.date)
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, count);
+}
+
+// ---------- highlight state ----------
+// Three states: nothing chosen (only the centre and the sections show colour), hovering a bubble
+// (its neighbours light up too), and clicked (the highlight stays until you click the background).
+const hiNodes = new Set(), hiLinks = new Set();
+let hoverNode = null;
+function setHighlight(node) {
+  hiNodes.clear(); hiLinks.clear();
+  if (node) { hiNodes.add(node); node.neighbors.forEach(n => hiNodes.add(n)); node.edges.forEach(l => hiLinks.add(l)); }
+  refresh();
+}
+function sectionColor(k) { return S().sec[k] || '#888'; }
+function isLit(n) {
+  if (hiNodes.size) return hiNodes.has(n);
+  if (n.kind === 'home' || n.kind === 'section') return true;
+  return !!hoverNode && (n === hoverNode || hoverNode.neighbors.has(n));
+}
+function isLinkLit(l) {
+  if (hiLinks.size) return hiLinks.has(l);
+  if (l.type === 'hub') return true;
+  return !!hoverNode && hoverNode.edges.includes(l);
+}
+function nodeColor(n) {
+  if (!isLit(n)) return S().dim;
+  if (n.kind === 'home') return S().vars.ink;
+  return n.kind === 'tag' ? S().tag : sectionColor(n.section);
+}
+function linkColor(l) { if (!isLinkLit(l)) return S().fade; return l.type === 'ref' ? S().ref : S().link; }
+function linkWidth(l) { return (hiLinks.has(l) || (!hiLinks.size && hoverNode && hoverNode.edges.includes(l))) ? 1.6 : (l.type === 'ref' || l.type === 'hub') ? 0.9 : 0.4; }
+
+// ---------- graph ----------
+const Graph = ForceGraph3D()(document.getElementById('graph'))
+  .graphData({ nodes, links })
+  .nodeId('id').nodeVal('val').nodeRelSize(4).nodeOpacity(0.95).nodeResolution(16)
+  .nodeLabel(n => `<div class="tip"><b>${n.title}</b><span>${n.summary || (n.kind === 'tag' ? 'Tag' : n.kind === 'home' ? 'Home' : 'Section')}</span></div>`)
+  .nodeColor(nodeColor).linkColor(linkColor)
+  .linkWidth(linkWidth)
+  .linkOpacity(1)
+  .linkDirectionalParticleWidth(1.6)
+  .linkDirectionalParticleSpeed(0.005)
+  .onNodeClick(n => n.kind === 'page' ? openPage(n.id) : focusOn(n))
+  .onNodeHover(n => { hoverNode = n; document.body.style.cursor = n ? 'pointer' : ''; refresh(); })
+  .onBackgroundClick(() => setHighlight(null))
+  .cooldownTicks(120);
+Graph.d3Force('charge').strength(-120);
+Graph.d3Force('link').distance(l => l.type === 'hub' ? 90 : l.type === 'belongs' ? 60 : l.type === 'tag' ? 40 : 70);
+
+function refresh() {
+  Graph.backgroundColor(S().vars.bg);
+  Graph.nodeColor(nodeColor).linkColor(linkColor).linkWidth(linkWidth)
+    .linkDirectionalParticleColor(() => S().particle)
+    .linkDirectionalParticles(l => opt.motion === 'flow' && l.type === 'ref' ? 2 : 0);
+}
+function sizeGraph() {
+  const left = document.body.classList.contains('split') && window.innerWidth > 720 ? parseInt(getComputedStyle(document.body).getPropertyValue('--side')) : 0;
+  Graph.width(window.innerWidth - left).height(window.innerHeight);
+}
+function focusOn(n) {
+  if (!n) return;
+  setHighlight(n);
+  const go = () => {
+    const d = 260, r = 1 + d / Math.hypot(n.x || 1, n.y || 1, n.z || 1);
+    const pos = opt.depth === 'd2' ? { x: n.x, y: n.y, z: d } : { x: n.x * r, y: n.y * r, z: n.z * r };
+    Graph.cameraPosition(pos, n, 1200);
+  };
+  if (n.x === undefined) setTimeout(go, 1200); else go();
+}
+
+// ---------- panel ----------
+const panel = document.getElementById('panel'), panelBody = document.getElementById('panelBody');
+function fmtDate(d) { if (!d) return ''; const [y, m, day] = d.split('-'); return `${Number(day)} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(m) - 1]} ${y}`; }
+function openPage(id, fromHash) {
+  const n = byId[id]; if (!n || n.kind !== 'page') return;
+  const others = [...n.neighbors].filter(x => x.kind === 'page');
+  document.getElementById('crumb').textContent = SECTIONS[n.section].title;
+  panelBody.innerHTML = `
+    <h1>${n.title}</h1>
+    <div class="meta">${SECTIONS[n.section].title}${n.date ? ' · ' + fmtDate(n.date) + '' : ''}</div>
+    <div class="chips">${n.tags.map(t => `<button class="chip" data-tag="${t}">#${t}</button>`).join('')}</div>
+    <div class="content">${(window.PAGES_DATA[n.id] || {}).html || ''}</div>
+    <div class="connected"><h4>Connected to</h4>${others.length ? others.map(o => `<button data-open="${o.id}">${o.title}<span>${SECTIONS[o.section].title}</span></button>`).join('') : '<div class="meta">Nothing yet</div>'}</div>`;
+  panel.classList.add('open');
+  if (!fromHash) { try { history.replaceState(null, '', '#/read/' + id); } catch (e) {} }
+  if (!document.body.classList.contains('listmode')) focusOn(n);
+}
+function closePanel() { panel.classList.remove('open'); setHighlight(null); Graph.zoomToFit(900, 60); try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
+panelBody.addEventListener('click', e => {
+  const t = e.target.closest('[data-tag],[data-open]'); if (!t) return;
+  if (t.dataset.open) openPage(t.dataset.open);
+  else { panel.classList.remove('open'); setView('graph'); focusOn(byId['tag:' + t.dataset.tag]); }
+});
+document.getElementById('closeBtn').onclick = closePanel;
+document.getElementById('copyBtn').onclick = async e => {
+  try { await navigator.clipboard.writeText(location.href); e.target.textContent = 'Copied'; }
+  catch (err) { e.target.textContent = 'Copy failed'; }
+  setTimeout(() => e.target.textContent = 'Copy link', 1500);
+};
+
+// ---------- latest, legend, list ----------
+const dated = latestPages(3);
+document.querySelectorAll('.latestItems').forEach(el => el.innerHTML = dated.map(p => `<a data-open="${p.id}">${p.title}<span>${SECTIONS[p.section].title} · ${fmtDate(p.date)}</span></a>`).join(''));
+document.addEventListener('click', e => {
+  const a = e.target.closest('.latest [data-open], #list [data-open]'); if (a) openPage(a.dataset.open);
+  const d = e.target.closest('.legend [data-sec]'); if (d) { setView('graph'); focusOn(byId['section:' + d.dataset.sec]); }
+});
+function renderLegend() {
+  document.querySelectorAll('.legendItems').forEach(el => el.innerHTML = Object.entries(SECTIONS).map(([k, s]) => `<div data-sec="${k}"><i style="background:${sectionColor(k)}"></i>${s.title}</div>`).join(''));
+}
+function renderList() {
+  document.getElementById('list').innerHTML = Object.entries(SECTIONS).map(([k, s]) => {
+    const ps = pageNodes.filter(p => p.section === k); if (!ps.length) return '';
+    return `<section><h2><i style="background:${sectionColor(k)}"></i>${s.title}</h2>${ps.map(p => `<a data-open="${p.id}">${p.title}<span>${p.summary}</span></a>`).join('')}</section>`;
+  }).join('');
+}
+
+// ---------- view toggle ----------
+function setView(v) {
+  document.body.classList.toggle('listmode', v === 'list');
+  document.getElementById('viewGraph').classList.toggle('on', v === 'graph');
+  document.getElementById('viewList').classList.toggle('on', v === 'list');
+}
+document.getElementById('viewGraph').onclick = () => setView('graph');
+document.getElementById('viewList').onclick = () => setView('list');
+
+// ---------- options panel ----------
+const optPanel = document.getElementById('options');
+document.getElementById('optBtn').onclick = () => optPanel.classList.toggle('open');
+document.getElementById('closeOpt').onclick = () => optPanel.classList.remove('open');
+document.querySelectorAll('#options .seg').forEach(seg => {
+  const key = seg.dataset.opt;
+  seg.innerHTML = Object.entries(OPTIONS[key]).map(([v, label]) => `<button data-v="${v}">${label}</button>`).join('');
+  seg.addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; opt[key] = b.dataset.v; applyOptions(key); });
+});
+document.getElementById('resetOpt').onclick = () => {
+  const depthChanged = opt.depth !== DEFAULTS.depth, layoutChanged = opt.layout !== DEFAULTS.layout;
+  opt = Object.assign({}, DEFAULTS);
+  applyOptions(depthChanged ? 'depth' : layoutChanged ? 'layout' : null);
+};
+function applyOptions(changed) {
+  const st = S();
+  Object.entries(st.vars).forEach(([k, v]) => document.documentElement.style.setProperty('--' + k, v));
+  document.body.classList.toggle('split', opt.layout === 'split');
+  document.querySelectorAll('#options .seg').forEach(seg => seg.querySelectorAll('[data-v]').forEach(b => b.classList.toggle('on', opt[seg.dataset.opt] === b.dataset.v)));
+  document.getElementById('styleHint').textContent = st.hint;
+  try { localStorage.setItem('portal-appearance', JSON.stringify(opt)); } catch (e) {}
+  renderLegend(); renderList(); refresh(); sizeGraph();
+  if (changed === 'depth') { Graph.numDimensions(opt.depth === 'd2' ? 2 : 3); setTimeout(() => Graph.zoomToFit(900, 60), 1600); }
+  if (changed === 'layout') setTimeout(() => Graph.zoomToFit(600, 60), 300);
+}
+
+// ---------- search ----------
+const q = document.getElementById('q'), results = document.getElementById('results');
+let hits = [], active = 0;
+function search(text) {
+  const s = text.trim().toLowerCase();
+  if (!s) { results.style.display = 'none'; return; }
+  hits = searchNodes(s);
+  active = 0;
+  results.innerHTML = hits.length ? hits.map((n, i) => `<button data-i="${i}" class="${i === 0 ? 'active' : ''}">${n.title}<span class="kind">${n.kind === 'page' ? SECTIONS[n.section].title : n.kind}</span></button>`).join('') : '<div class="meta" style="padding:10px 12px">No matches</div>';
+  results.style.display = 'block';
+}
+function choose(n) { results.style.display = 'none'; q.value = ''; q.blur(); if (n.kind === 'page') openPage(n.id); else { setView('graph'); focusOn(n); } }
+q.addEventListener('input', () => search(q.value));
+q.addEventListener('keydown', e => {
+  if (!hits.length) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); active = (active + (e.key === 'ArrowDown' ? 1 : hits.length - 1)) % hits.length;
+    [...results.children].forEach((b, i) => b.classList.toggle('active', i === active)); }
+  if (e.key === 'Enter') { e.preventDefault(); choose(hits[active]); }
+  if (e.key === 'Escape') { results.style.display = 'none'; }
+});
+results.addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) choose(hits[Number(b.dataset.i)]); });
+document.addEventListener('click', e => { if (!e.target.closest('.search')) results.style.display = 'none'; });
+
+// ---------- start ----------
+// A shared link like #/read/projects/job-copilot opens that page.
+function fromHash() {
+  const h = location.hash;
+  if (h.startsWith('#/read/')) openPage(decodeURIComponent(h.slice(7)), true);
+}
+window.addEventListener('hashchange', fromHash);
+window.addEventListener('resize', sizeGraph);
+if (opt.depth === 'd2') Graph.numDimensions(2);
+applyOptions();
+if (window.innerWidth < 720) setView('list');
+setTimeout(fromHash, 300);
+</script>
+</body>
+</html>

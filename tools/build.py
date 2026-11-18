@@ -117,7 +117,8 @@ def build_graph(pages):
         by_id[a]["degree"] += 1
         by_id[b]["degree"] += 1
 
-    # Every bubble: one per section, one per page, and one per tag (each tag only once).
+    # Every bubble: one centre ("home"), one per section, one per page, and one per tag (each tag only once).
+    add({"id": "home", "kind": "home", "title": "Mehul Patankar"})
     for key, title in SECTION_TITLES.items():
         add({"id": "section:" + key, "kind": "section", "section": key, "title": title})
     for p in pages:
@@ -129,6 +130,9 @@ def build_graph(pages):
 
     # Every line, after all bubbles exist: page to section, page to tag, and page to page
     # (once per pair, and only to pages that are published, so drafts stay hidden).
+    # The centre links to every section, so no section can float off on its own.
+    for key in SECTION_TITLES:
+        connect("home", "section:" + key, "hub")
     seen = set()
     for p in pages:
         connect(p["id"], "section:" + p["section"], "belongs")
@@ -142,7 +146,9 @@ def build_graph(pages):
 
     # Sizes: big sections, small tags, and pages that grow with their connections.
     for n in nodes:
-        if n["kind"] == "section":
+        if n["kind"] == "home":
+            n["val"] = 60
+        elif n["kind"] == "section":
             n["val"] = 40
         elif n["kind"] == "page":
             n["val"] = round(3 + 0.6 * n["degree"], 1)
