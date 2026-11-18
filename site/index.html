@@ -21,7 +21,7 @@
     padding: 14px 18px; z-index: 6; pointer-events: none; }
   header > * { pointer-events: auto; }
   body.split header { left: var(--side); }
-  .brand { font-weight: 600; font-size: 15px; }
+  .brand { font-weight: 600; font-size: 15px; cursor: pointer; }
   .brand small { display: block; font-weight: 400; color: var(--quiet); font-size: 12.5px; margin-top: 2px; }
   body.split .brand { visibility: hidden; }
   .spacer { flex: 1; }
@@ -131,7 +131,7 @@
   <div class="block legend"><h3 class="lbl">Sections</h3><div class="legendItems"></div></div>
 </aside>
 <header>
-  <div class="brand">Mehul Patankar<small>Engineering manager, back to building</small></div>
+  <div class="brand" id="brand" title="Home">Mehul Patankar<small>Engineering manager, back to building</small></div>
   <div class="spacer"></div>
   <div class="seg" role="group" aria-label="View">
     <button id="viewGraph" class="on">Graph</button>
@@ -266,16 +266,20 @@ function linkColor(l) { if (!isLinkLit(l)) return S().fade; return l.type === 'r
 function linkWidth(l) { return (hiLinks.has(l) || (!hiLinks.size && hoverNode && hoverNode.edges.includes(l))) ? 1.6 : (l.type === 'ref' || l.type === 'hub') ? 0.9 : 0.4; }
 
 // ---------- graph ----------
+// The centre node is pinned to the middle of the graph, so everything always radiates from it.
+const home = byId.home;
+if (home) { home.fx = 0; home.fy = 0; home.fz = 0; }
+
 const Graph = ForceGraph3D()(document.getElementById('graph'))
   .graphData({ nodes, links })
   .nodeId('id').nodeVal('val').nodeRelSize(4).nodeOpacity(0.95).nodeResolution(16)
-  .nodeLabel(n => `<div class="tip"><b>${n.title}</b><span>${n.summary || (n.kind === 'tag' ? 'Tag' : n.kind === 'home' ? 'Home' : 'Section')}</span></div>`)
+  .nodeLabel(n => `<div class="tip"><b>${n.title}</b><span>${n.summary || (n.kind === 'tag' ? 'Tag' : n.kind === 'home' ? 'Home: click to see everything' : 'Section')}</span></div>`)
   .nodeColor(nodeColor).linkColor(linkColor)
   .linkWidth(linkWidth)
   .linkOpacity(1)
   .linkDirectionalParticleWidth(1.6)
   .linkDirectionalParticleSpeed(0.005)
-  .onNodeClick(n => n.kind === 'page' ? openPage(n.id) : focusOn(n))
+  .onNodeClick(n => n.kind === 'home' ? goHome() : n.kind === 'page' ? openPage(n.id) : focusOn(n))
   .onNodeHover(n => { hoverNode = n; document.body.style.cursor = n ? 'pointer' : ''; refresh(); })
   .onBackgroundClick(() => setHighlight(null))
   .cooldownTicks(120);
@@ -321,6 +325,13 @@ function openPage(id, fromHash) {
   if (!document.body.classList.contains('listmode')) focusOn(n);
 }
 function closePanel() { panel.classList.remove('open'); setHighlight(null); Graph.zoomToFit(900, 60); try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
+// Home: the centre bubble and the name in the top-left both do this. Close any page, clear the
+// highlight and search, show the graph, and fit the whole graph back into view.
+function goHome() {
+  closePanel(); setView('graph');
+  results.style.display = 'none'; q.value = '';
+}
+document.getElementById('brand').onclick = goHome;
 panelBody.addEventListener('click', e => {
   const t = e.target.closest('[data-tag],[data-open]'); if (!t) return;
   if (t.dataset.open) openPage(t.dataset.open);
