@@ -8,8 +8,9 @@ import sys
 import yaml
 import markdown
 import re
-from collections import Counter
 import posixpath
+import argparse
+import json
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -158,15 +159,45 @@ def rewrite_links(html, page_id):
         return 'href="#/read/' + resolve_link(page_id, match.group(1)) + '"'
     return re.sub(r'href="([^"]+\.md)"', swap, html)
 
+# ---------- step 6: write the data files ----------
+
+def write_js(path, var_name, data):
+    """Write `window.<var_name> = <data as JSON>;` to path."""
+    # Wraps the data as window.X = {...}; so a plain <script> tag can load it.
+    # ensure_ascii=False keeps Hindi, Marathi or the rupee sign readable.
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = "window." + var_name + " = " + json.dumps(data, ensure_ascii=False, indent=1) + ";\n"
+    path.write_text(text, encoding="utf-8")
+
+
+def build(content_dir, out_dir):
+    """Run the whole pipeline. Return (ids kept, ids skipped)."""
+    # read -> keep public -> stop on a broken page -> graph -> HTML -> two files.
+    pages = read_pages(content_dir)
+    public = [p for p in pages if is_public(p)]
+    skipped = [p["id"] for p in pages if not is_public(p)]
+    for p in public:
+        missing = problems_in(p)
+        if missing:
+            raise ValueError(f"{p['id']}: missing {', '.join(missing)}")
+    nodes, links = build_graph(public)
+    pages_data = {p["id"]: {"title": p["title"], "html": rewrite_links(to_html(p["body"]), p["id"])}
+                  for p in public}
+    write_js(out_dir / "graph-data.js", "GRAPH_DATA", {"nodes": nodes, "links": links})
+    write_js(out_dir / "pages-data.js", "PAGES_DATA", pages_data)
+    return [p["id"] for p in public], skipped
+
 def main():
-    pages = [p for p in read_pages(ROOT / "content") if is_public(p)]
-    nodes, links = build_graph(pages)
-    print("Nodes:", dict(Counter(n["kind"] for n in nodes)))
-    print("Links:", dict(Counter(l["type"] for l in links)))
-    for l in links:
-        if l["type"] == "ref":
-            print("  ref:", l["source"], "->", l["target"])
-    print(rewrite_links(to_html(pages[0]["body"]), pages[0]["id"]))
+    parser = argparse.ArgumentParser(description="Build the portal's data files.")
+    parser.add_argument("--content", default=str(ROOT / "content"))
+    parser.add_argument("--out", default=str(ROOT / "site"))
+    args = parser.parse_args()
+    try:
+        kept, skipped = build(Path(args.content), Path(args.out))
+    except ValueError as err:
+        print(f"Build failed: {err}")
+        return 1
+    print(f"Built {len(kept)} public pages. Skipped {len(skipped)}: {', '.join(skipped) or 'none'}.")
     return 0
 
 
