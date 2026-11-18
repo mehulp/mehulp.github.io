@@ -176,6 +176,28 @@ def write_js(path, var_name, data):
     path.write_text(text, encoding="utf-8")
 
 
+def read_quotes(path):
+    """Read content/quotes.yml. Return a list of {text, by, tags, sections}; [] if the file is absent."""
+    # Each saying must have text. tags and sections are optional lists, used by the front end
+    # to show sayings that match the clicked tag or section.
+    if not path.exists():
+        return []
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or []
+    if not isinstance(raw, list):
+        raise ValueError(f"{path.name}: expected a list of sayings")
+    quotes = []
+    for i, item in enumerate(raw, 1):
+        if not isinstance(item, dict) or not str(item.get("text", "")).strip():
+            raise ValueError(f"{path.name}: saying {i} has no text")
+        quotes.append({
+            "text": str(item["text"]).strip(),
+            "by": str(item.get("by") or "").strip(),
+            "tags": [str(t) for t in item.get("tags") or []],
+            "sections": [str(x) for x in item.get("sections") or []],
+        })
+    return quotes
+
+
 def build(content_dir, out_dir):
     """Run the whole pipeline. Return (ids kept, ids skipped)."""
     # read -> keep public -> stop on a broken page -> graph -> HTML -> two files.
@@ -191,6 +213,7 @@ def build(content_dir, out_dir):
                   for p in public}
     write_js(out_dir / "graph-data.js", "GRAPH_DATA", {"nodes": nodes, "links": links})
     write_js(out_dir / "pages-data.js", "PAGES_DATA", pages_data)
+    write_js(out_dir / "quotes-data.js", "QUOTES_DATA", read_quotes(content_dir / "quotes.yml"))
     return [p["id"] for p in public], skipped
 
 def main():

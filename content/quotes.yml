@@ -1,0 +1,99 @@
+# Sayings shown at the bottom of the graph. EVERYTHING in this file is published.
+#
+#   text:      the saying (required)
+#   by:        who said it (optional; only add what is safely attributed)
+#   tags:      optional labels. Not used yet: every saying rotates for everyone.
+#              Kept so they can drive tag-specific sayings later.
+#   sections:  optional, same: about, projects, journal, blog, system-design
+#
+# Text is written in "double quotes" so colons and apostrophes can never break the file.
+
+- text: "The journey of a thousand miles begins with a single step."
+  by: "Lao Tzu"
+  tags: [building, action, focus]
+- text: "Fall seven times, stand up eight."
+  by: "Japanese proverb"
+  tags: [leadership, resilience, persistence]
+- text: "Well begun is half done."
+  by: "Ancient proverb"
+  sections: [projects]
+- text: "A little progress each day adds up to big results."
+- text: "The expert in anything was once a beginner."
+  sections: [about]
+- text: "Consistency turns effort into mastery."
+- text: "Study today so tomorrow's problems feel familiar."
+  sections: [journal, system-design]
+- text: "Small, steady steps outlast bursts of intensity."
+  tags: [leadership]
+- text: "Difficult roads often lead to beautiful destinations."
+- text: "Patience, persistence, and perspiration make an unbeatable combination for success."
+  by: "Napoleon Hill"
+  tags: [building]
+- text: "The best time to plant a tree was 20 years ago. The second best time is now."
+  by: "Chinese proverb"
+  tags: [leadership]
+  sections: [blog]
+- text: "Confidence comes from preparation, not luck."
+- text: "What you learn today becomes the instinct you rely on tomorrow."
+  sections: [journal]
+- text: "Progress, not perfection."
+- text: "Our greatest glory is not in never falling, but in rising every time we fall."
+  by: "Oliver Goldsmith"
+  tags: [resilience, persistence]
+- text: "Strength does not come from physical capacity. It comes from an indomitable will."
+  by: "Mahatma Gandhi"
+  tags: [resilience, leadership]
+- text: "I have gotten a lot of results! I know several thousand things that won't work."
+  by: "Thomas A. Edison"
+  tags: [persistence, hardwork, building]
+- text: "The only place where success comes before work is in the dictionary."
+  by: "Vidal Sassoon"
+  tags: [hardwork, success]
+- text: "Opportunities don't happen. You create them."
+  by: "Chris Grosser"
+  tags: [building, action, hardwork]
+- text: "Don't watch the clock; do what it does. Keep going."
+  by: "Sam Levenson"
+  tags: [persistence, focus, hardwork]
+- text: "Your time is limited, so don't waste it living someone else's life."
+  by: "Steve Jobs"
+  tags: [focus, mindset, leadership]
+- text: "Do what you can, with what you've got, where you are."
+  by: "Squire Bill Widener, quoted by Theodore Roosevelt"
+  tags: [action, leadership, persistence]
+- text: "Everything you've ever wanted is on the other side of fear."
+  by: "George Addair"
+  tags: [action, mindset]
+- text: "You miss 100% of the shots you don't take."
+  by: "Wayne Gretzky"
+  tags: [action, focus]
+- text: "A leader is one who knows the way, goes the way, and shows the way."
+  by: "John C. Maxwell"
+  tags: [leadership]
+- text: "Innovation distinguishes between a leader and a follower."
+  by: "Steve Jobs"
+  tags: [leadership, building]
+- text: "Before you are a leader, success is all about growing yourself. When you become a leader, success is all about growing others."
+  by: "Jack Welch"
+  tags: [leadership, success]
+- text: "The art of communication is the language of leadership."
+  by: "James Humes"
+  tags: [leadership]
+- text: "There are no secrets to success. It is the result of preparation, hard work, and learning from failure."
+  by: "Colin Powell"
+  tags: [hardwork, leadership, success]
+- text: "Genius is 1% inspiration and 99% perspiration."
+  by: "Thomas A. Edison"
+  tags: [hardwork, persistence, building]
+- text: "Dreams don't work unless you do."
+  by: "John C. Maxwell"
+  tags: [hardwork, action]
+- text: "Where focus goes, energy flows."
+  by: "Tony Robbins"
+  tags: [focus, action]
+- text: "Rivers know this: there is no hurry. We shall get there some day."
+  by: "A.A. Milne"
+  tags: [persistence, focus]
+- text: "Perseverance is not a long race; it is many short races one after the other."
+  by: "Walter Elliot"
+  tags: [persistence, focus, resilience]

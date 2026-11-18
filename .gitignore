@@ -1,5 +1,6 @@
 private/
 site/graph-data.js
 site/pages-data.js
+site/quotes-data.js
 __pycache__/
 .venv/

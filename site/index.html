@@ -44,6 +44,16 @@
   .seg button + button { border-left: 1px solid var(--line); }
   .seg button.on { background: var(--panel-2); color: var(--accent); font-weight: 600; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+  /* The saying at the bottom of the graph: one quiet line that fades from one to the next. */
+  #quote { position: fixed; left: 340px; right: 200px; bottom: 26px; z-index: 3; text-align: center; cursor: pointer;
+    font-family: var(--read); font-style: italic; font-size: 15.5px; line-height: 1.45; color: var(--quiet);
+    opacity: 0; transition: opacity .7s ease; }
+  #quote.show { opacity: 1; }
+  #quote .by { display: block; font-family: var(--ui); font-style: normal; font-size: 11.5px; margin-top: 3px; opacity: .8; }
+  body.split #quote { left: calc(var(--side) + 24px); }
+  body.reading #quote, body.listmode #quote { display: none; }
+  @media (max-width: 900px) { #quote { display: none; } }
+  @media (prefers-reduced-motion: reduce) { #quote { transition: none; } }
   #latest { position: fixed; left: 18px; bottom: 18px; width: 300px; padding: 14px 16px; z-index: 4; }
   h3.lbl { margin: 0 0 8px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--quiet); font-weight: 600; }
   h3.lbl span { text-transform: none; letter-spacing: 0; font-weight: 400; }
@@ -143,6 +153,7 @@
     <div class="results" id="results"></div>
   </div>
 </header>
+<div id="quote" title="Click for another" aria-live="off"></div>
 <div id="latest" class="card latest"><h3 class="lbl">Latest</h3><div class="latestItems"></div></div>
 <div id="legend" class="card legend"><h3 class="lbl">Sections</h3><div class="legendItems"></div></div>
 <div id="list"></div>
@@ -162,6 +173,8 @@
 <!-- Loads the two files build.py writes, so window.GRAPH_DATA and window.PAGES_DATA exist. -->
 <script src="graph-data.js"></script>
 <script src="pages-data.js"></script>
+<!-- Sayings from content/quotes.yml (written by build.py). Missing file = no sayings. -->
+<script src="quotes-data.js"></script>
 <script>
 // ---------- design options ----------
 const STYLES = {
@@ -320,11 +333,11 @@ function openPage(id, fromHash) {
     <div class="chips">${n.tags.map(t => `<button class="chip" data-tag="${t}">#${t}</button>`).join('')}</div>
     <div class="content">${(window.PAGES_DATA[n.id] || {}).html || ''}</div>
     <div class="connected"><h4>Connected to</h4>${others.length ? others.map(o => `<button data-open="${o.id}">${o.title}<span>${SECTIONS[o.section].title}</span></button>`).join('') : '<div class="meta">Nothing yet</div>'}</div>`;
-  panel.classList.add('open');
+  panel.classList.add('open'); document.body.classList.add('reading');
   if (!fromHash) { try { history.replaceState(null, '', '#/read/' + id); } catch (e) {} }
   if (!document.body.classList.contains('listmode')) focusOn(n);
 }
-function closePanel() { panel.classList.remove('open'); setHighlight(null); Graph.zoomToFit(900, 60); try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
+function closePanel() { panel.classList.remove('open'); document.body.classList.remove('reading'); setHighlight(null); Graph.zoomToFit(900, 60); try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
 // Home: the centre bubble and the name in the top-left both do this. Close any page, clear the
 // highlight and search, show the graph, and fit the whole graph back into view.
 function goHome() {
@@ -335,7 +348,7 @@ document.getElementById('brand').onclick = goHome;
 panelBody.addEventListener('click', e => {
   const t = e.target.closest('[data-tag],[data-open]'); if (!t) return;
   if (t.dataset.open) openPage(t.dataset.open);
-  else { panel.classList.remove('open'); setView('graph'); focusOn(byId['tag:' + t.dataset.tag]); }
+  else { panel.classList.remove('open'); document.body.classList.remove('reading'); setView('graph'); focusOn(byId['tag:' + t.dataset.tag]); }
 });
 document.getElementById('closeBtn').onclick = closePanel;
 document.getElementById('copyBtn').onclick = async e => {
@@ -360,6 +373,38 @@ function renderList() {
     return `<section><h2><i style="background:${sectionColor(k)}"></i>${s.title}</h2>${ps.map(p => `<a data-open="${p.id}">${p.title}<span>${p.summary}</span></a>`).join('')}</section>`;
   }).join('');
 }
+
+// ---------- sayings ----------
+// A saying fades in at the bottom every 25 seconds, drawn from all sayings in quotes.yml.
+const QUOTES = window.QUOTES_DATA || [], QUOTE_EVERY_MS = 25000;
+const quoteEl = document.getElementById('quote');
+let quoteLast = '', quoteTimer = null, quoteSwap = null, quoteHover = false;
+function quotePool() { return QUOTES; }   // every saying rotates for everyone (tags in quotes.yml are kept for later)
+function pickQuote() {
+  const pool = quotePool();
+  if (!pool.length) return null;
+  const others = pool.filter(q => q.text !== quoteLast);   // never the same one twice in a row
+  const from = others.length ? others : pool;
+  return from[Math.floor(Math.random() * from.length)];
+}
+function showQuote() {
+  clearTimeout(quoteTimer); clearTimeout(quoteSwap);
+  const q = pickQuote();
+  if (!q) return;
+  quoteEl.classList.remove('show');
+  quoteSwap = setTimeout(() => {   // wait for the fade-out, then swap the text (textContent: never treated as HTML)
+    quoteEl.textContent = '\u201C' + q.text + '\u201D';
+    if (q.by) { const by = document.createElement('span'); by.className = 'by'; by.textContent = q.by; quoteEl.appendChild(by); }
+    quoteLast = q.text;
+    quoteEl.classList.add('show');
+  }, quoteEl.classList.contains('show') ? 700 : 0);
+  quoteTimer = setTimeout(nextQuote, QUOTE_EVERY_MS);
+}
+function nextQuote() { if (quoteHover) { quoteTimer = setTimeout(nextQuote, 2000); return; } showQuote(); }   // paused while the mouse is on it
+quoteEl.addEventListener('mouseenter', () => { quoteHover = true; });
+quoteEl.addEventListener('mouseleave', () => { quoteHover = false; });
+quoteEl.addEventListener('click', showQuote);
+setTimeout(showQuote, 600);
 
 // ---------- view toggle ----------
 function setView(v) {

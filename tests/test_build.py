@@ -37,3 +37,20 @@ def test_every_section_is_linked_to_the_home_node():
     assert sum(1 for n in nodes if n["kind"] == "home") == 1
     hubs = {l["target"] for l in links if l["type"] == "hub" and l["source"] == "home"}
     assert hubs == {"section:" + k for k in build.SECTION_TITLES}
+
+
+def test_quotes_are_read_and_a_missing_file_is_fine(tmp_path):
+    # Sayings keep their tags and sections; a content folder with no quotes.yml builds with none.
+    quotes = build.read_quotes(FIXTURES / "quotes.yml")
+    assert quotes[0] == {"text": "Test saying.", "by": "Someone", "tags": ["leadership"], "sections": ["blog"]}
+    assert build.read_quotes(tmp_path / "nope.yml") == []
+
+
+def test_a_saying_without_text_stops_the_build(tmp_path):
+    bad = tmp_path / "quotes.yml"
+    bad.write_text("- by: nobody\n")
+    try:
+        build.read_quotes(bad)
+        assert False, "expected ValueError"
+    except ValueError as err:
+        assert "saying 1" in str(err)
