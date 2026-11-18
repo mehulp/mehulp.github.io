@@ -1,0 +1,49 @@
+# Runs on every push to main, and from the "Run workflow" button in the Actions tab.
+name: Publish site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# What the Action may do: read the repo, publish to Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One publish at a time; a new push waits for the running one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # A fresh machine every time: get the repo, Python and the packages.
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      # The three gates, in order. Any failure stops the job, so nothing is published.
+      - run: python3 tools/check_layout.py
+      - run: python3 -m pytest -q
+      - run: python3 tools/build.py
+      # Hand the finished site/ folder to GitHub Pages.
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  # Publishes only if build succeeded.
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
