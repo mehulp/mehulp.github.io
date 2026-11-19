@@ -12,58 +12,75 @@
     --line: #2a3632; --accent: #7fd1b9; --chip: #22302b; --shadow: 0 10px 40px rgba(0,0,0,.45);
     --ui: Inter, system-ui, sans-serif; --read: 'Source Serif 4', Georgia, serif; --head: 'Source Serif 4', Georgia, serif;
     --radius: 14px; --side: 380px;
+    --accent-text: var(--accent);   /* the accent used as text: darker in Mono, where the orange is too light for small type */
+    --text-2: var(--quiet); --text-2: color-mix(in srgb, var(--ink) 72%, var(--bg));   /* secondary text: readable, but quieter than the main text */
+    --panelw: clamp(360px, 38vw, 520px);   /* the reading panel: roomy on a wide screen, leaves the graph room on a narrow one */
+    --hh: 96px;                            /* the header's real height, kept up to date by script */
   }
+  @media (max-width: 720px) { :root { --panelw: 100vw; } }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: var(--ui); overflow: hidden; }
-  #graph { position: fixed; inset: 0; }
+  #graph { position: fixed; inset: 0; opacity: 0; transition: opacity .25s ease; }
+  #graph.ready { opacity: 1; }
   body.split #graph { left: var(--side); }
-  header { position: fixed; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 10px;
-    padding: 14px 18px; z-index: 6; pointer-events: none; }
-  header > * { pointer-events: auto; }
+  header { position: fixed; top: 0; left: 0; right: 0; display: flex; align-items: flex-start; gap: 16px;
+    padding: 16px 22px 10px; z-index: 6; pointer-events: none; }
+  header > *, header .controls > * { pointer-events: auto; }
+  header .id { pointer-events: none; min-width: 0; }
+  header .id .brand { pointer-events: auto; }
   body.split header { left: var(--side); }
-  .brand { font-weight: 600; font-size: 15px; cursor: pointer; }
-  .brand small { display: block; font-weight: 400; color: var(--quiet); font-size: 12.5px; margin-top: 2px; }
-  body.split .brand { visibility: hidden; }
+  body.split header .id { display: none; }
+  /* The name: a button (it is Home), set a little larger in the heading face; the subtitle and the one-line invitation sit under it. */
+  .brand { display: block; padding: 0; border: 0; background: none; color: var(--ink); text-align: left; cursor: pointer;
+    font-family: var(--head); font-weight: 600; font-size: 20px; line-height: 1.2; letter-spacing: -.005em; }
+  .brand small { display: block; margin-top: 3px; font-family: var(--ui); font-weight: 400; font-size: 13.5px; line-height: 1.35; letter-spacing: 0; color: var(--text-2); }
+  .lede { margin: 7px 0 0; max-width: 440px; font-size: 13px; line-height: 1.45; color: var(--text-2); }
+  .controls { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .help { width: 34px; height: 34px; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--text-2);
+    font: 600 14px/1 var(--ui); cursor: pointer; }
+  .help:hover, .help[aria-expanded="true"] { border-color: var(--accent); color: var(--ink); }
   .spacer { flex: 1; }
   .search { position: relative; }
-  .search input { width: 230px; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line);
+  .search input { width: clamp(160px, 17vw, 230px); height: 34px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line);
     background: var(--panel); color: var(--ink); font: inherit; font-size: 13.5px; outline: none; }
   .search input:focus { border-color: var(--accent); }
-  .results { position: absolute; top: 42px; right: 0; width: 300px; max-height: 320px; overflow: auto;
+  .search input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .results { position: absolute; top: 40px; right: 0; width: 300px; max-height: 320px; overflow: auto;
     background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); display: none; z-index: 8; }
   .results button { display: block; width: 100%; text-align: left; padding: 9px 12px; border: 0; background: none;
     color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
   .results button:hover, .results button.active { background: var(--panel-2); }
   .results .kind { color: var(--quiet); font-size: 11.5px; margin-left: 6px; }
-  .btn { padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel);
+  .btn { height: 34px; padding: 0 13px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel);
     color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
   .btn:hover { border-color: var(--accent); }
-  .btn.primary { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .btn.primary { border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
   .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-  .seg button { border: 0; border-radius: 0; background: var(--panel); padding: 7px 11px; font: inherit; font-size: 12.5px; color: var(--ink); cursor: pointer; }
+  .seg button { border: 0; border-radius: 0; background: var(--panel); height: 32px; padding: 0 12px; font: inherit; font-size: 13px; color: var(--ink); cursor: pointer; }
   .seg button + button { border-left: 1px solid var(--line); }
-  .seg button.on { background: var(--panel-2); color: var(--accent); font-weight: 600; }
+  .seg button.on { background: var(--panel-2); color: var(--accent-text); font-weight: 600; }
+  /* One consistent, visible focus ring for everything you can Tab to. */
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .seg button:focus-visible { outline-offset: -3px; }
+  #graph:focus-visible { outline: none; }
+  .brand:focus-visible { outline-offset: 4px; border-radius: 4px; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
-  /* The saying at the bottom of the graph: one quiet line that fades from one to the next. */
-  #quote { position: fixed; left: 340px; right: 200px; bottom: 26px; z-index: 3; text-align: center; cursor: pointer;
-    font-family: var(--read); font-style: italic; font-size: 15.5px; line-height: 1.45; color: var(--quiet);
-    opacity: 0; transition: opacity .7s ease; }
-  #quote.show { opacity: 1; }
-  #quote .by { display: block; font-family: var(--ui); font-style: normal; font-size: 11.5px; margin-top: 3px; opacity: .8; }
-  body.split #quote { left: calc(var(--side) + 24px); }
-  body.reading #quote, body.listmode #quote { display: none; }
-  @media (max-width: 900px) { #quote { display: none; } }
-  @media (prefers-reduced-motion: reduce) { #quote { transition: none; } }
-  #latest { position: fixed; left: 18px; bottom: 18px; width: 300px; padding: 14px 16px; z-index: 4; }
-  h3.lbl { margin: 0 0 8px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--quiet); font-weight: 600; }
+  #latest { position: fixed; left: 20px; bottom: 20px; width: 290px; padding: 0; z-index: 4; }
+  #latest summary { display: flex; align-items: center; gap: 8px; padding: 12px 16px 6px; cursor: pointer; list-style: none; }
+  #latest summary::-webkit-details-marker { display: none; }
+  #latest summary::after { content: ''; margin-left: auto; width: 7px; height: 7px; border-right: 1.5px solid var(--text-2); border-bottom: 1.5px solid var(--text-2); transform: rotate(45deg) translateY(-2px); transition: transform .15s ease; }
+  #latest[open] summary::after { transform: rotate(-135deg) translate(-2px, -1px); }
+  #latest .latestItems { padding: 0 16px 8px; }
+  #latest .peekline { display: none; }
+  h3.lbl, .latest .lbl { margin: 0; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-2); font-weight: 600; }
+  #side h3.lbl { margin: 0 0 8px; }
   h3.lbl span { text-transform: none; letter-spacing: 0; font-weight: 400; }
-  .latest a { display: block; color: var(--ink); text-decoration: none; padding: 7px 0; font-size: 13.5px; border-top: 1px solid var(--line); cursor: pointer; }
-  .latest a:first-of-type { border-top: 0; }
-  .latest a span { display: block; color: var(--quiet); font-size: 11.5px; margin-top: 2px; }
-  #legend { position: fixed; right: 18px; bottom: 18px; padding: 12px 14px; z-index: 4; font-size: 12.5px; }
-  .legendItems > div { display: flex; align-items: center; gap: 8px; margin: 5px 0; cursor: pointer; font-size: 13px; }
-  .legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-  body.split #latest, body.split #legend, body.split .proto-note { display: none; }
+  .latest a { display: block; color: var(--ink); text-decoration: none; padding: 9px 0; border-top: 1px solid var(--line); cursor: pointer; }
+  .latest a:first-child { border-top: 0; }
+  .latest a .t { display: block; font-size: 14px; line-height: 1.3; font-weight: 500; }
+  .latest a .m { display: block; margin-top: 3px; font-size: 12px; color: var(--text-2); }
+  .latest a:hover .t, .latest a:focus-visible .t { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; }
+  body.split #latest { display: none; }
   #side { display: none; position: fixed; left: 0; top: 0; bottom: 0; width: var(--side); background: var(--panel);
     border-right: 1px solid var(--line); padding: 28px 28px 24px; overflow: auto; z-index: 5; }
   body.split #side { display: block; }
@@ -71,91 +88,239 @@
   #side .role { color: var(--quiet); font-size: 14px; margin-bottom: 18px; }
   #side p { font-family: var(--read); font-size: 15.5px; line-height: 1.55; margin: 0 0 22px; }
   #side .block { margin-bottom: 22px; }
-  #panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100%); background: var(--panel);
+  #panel { position: fixed; top: 0; right: 0; bottom: 0; width: var(--panelw); max-width: 100vw; background: var(--panel);
     border-left: 1px solid var(--line); box-shadow: var(--shadow); z-index: 10; transform: translateX(105%);
     transition: transform .28s ease; display: flex; flex-direction: column; }
   #panel.open { transform: none; }
   #panel .top { display: flex; align-items: center; gap: 8px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
   #panel .crumb { color: var(--quiet); font-size: 12.5px; flex: 1; }
-  #panel .body { overflow: auto; padding: 22px 26px 40px; }
+  #panel .body { overflow: auto; overflow-wrap: anywhere; padding: 22px 26px 40px; }
+  #panel .content table { display: block; max-width: 100%; overflow-x: auto; }
+  #panel .content img, #panel .content pre { max-width: 100%; }
+  #panel .content pre { overflow-x: auto; }
+  #closeBtn .lab-m { display: none; }
   #panel h1 { font-family: var(--head); font-weight: 600; font-size: 28px; line-height: 1.2; margin: 0 0 8px; }
   #panel .meta, .meta { color: var(--quiet); font-size: 12.5px; margin-bottom: 14px; }
   #panel .content { font-family: var(--read); font-size: 17px; line-height: 1.6; }
   #panel .content p { margin: 0 0 14px; }
   #panel .content table { border-collapse: collapse; margin: 0 0 14px; font-size: 15px; }
   #panel .content th, #panel .content td { border: 1px solid var(--line); padding: 5px 10px; text-align: left; }
-  #panel .content a { color: var(--accent); }
+  #panel .content a { color: var(--accent-text); }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 18px; }
   .chip { background: var(--chip); color: var(--ink); border: 0; border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
-  .chip:hover { color: var(--accent); }
+  .chip:hover { color: var(--accent-text); }
   .connected { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 16px; }
   .connected h4 { margin: 0 0 8px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--quiet); }
   .connected button { display: block; width: 100%; text-align: left; background: none; border: 0; color: var(--ink);
     font: inherit; font-size: 14px; padding: 7px 0; border-top: 1px solid var(--line); cursor: pointer; }
-  .connected button:hover { color: var(--accent); }
+  .connected button:hover { color: var(--accent-text); }
   .connected button span { color: var(--quiet); font-size: 12px; margin-left: 6px; }
   .proto-note { position: fixed; top: 64px; left: 18px; z-index: 4; font-size: 12px; color: var(--quiet);
     background: var(--panel); border: 1px dashed var(--line); border-radius: 8px; padding: 6px 10px; max-width: 320px; }
-  #list { position: fixed; inset: 64px 0 0 0; overflow: auto; padding: 10px 18px 40px; display: none; z-index: 3; background: var(--bg); }
+  #list { position: fixed; inset: var(--hh) 0 0 0; overflow: auto; padding: 10px 18px 40px; display: none; z-index: 3; background: var(--bg); }
   body.split #list { left: var(--side); }
   #list section { max-width: 720px; margin: 0 auto 22px; }
   #list h2 { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
   #list h2 i { width: 10px; height: 10px; border-radius: 50%; }
   #list a { display: block; padding: 12px 14px; margin: 6px 0; background: var(--panel); border: 1px solid var(--line);
     border-radius: 12px; color: var(--ink); text-decoration: none; cursor: pointer; }
-  #list a span { display: block; color: var(--quiet); font-size: 13px; margin-top: 3px; }
+  #list a span { display: block; color: var(--text-2); font-size: 13px; margin-top: 3px; }
+  #list a:hover { border-color: var(--accent); }
   body.listmode #list { display: block; }
-  body.listmode #latest, body.listmode #legend, body.listmode .proto-note { display: none; }
-  #options { position: fixed; top: 64px; right: 18px; width: 360px; padding: 16px 18px; z-index: 9; display: none; }
+  body.listmode #latest { display: none; }
+  #options { position: fixed; top: calc(var(--hh) + 4px); right: 20px; width: min(360px, calc(100vw - 24px)); max-height: calc(100vh - var(--hh) - 20px); overflow: auto; padding: 16px 18px; z-index: 9; display: none; }
   #options.open { display: block; }
   #options .row { margin-bottom: 14px; }
   #options .row h3 { margin-bottom: 6px; }
   #options .hint { color: var(--quiet); font-size: 12px; margin-top: 5px; line-height: 1.4; }
   #options .choice { font-size: 12.5px; background: var(--panel-2); border-radius: 8px; padding: 8px 10px; margin: 6px 0 10px; }
-  .tip { font-family: var(--ui); background: var(--panel); color: var(--ink); border: 1px solid var(--line);
-    border-radius: 8px; padding: 8px 10px; max-width: 260px; font-size: 12.5px; line-height: 1.4; }
-  .tip b { display: block; font-size: 13px; margin-bottom: 2px; }
-  .tip span { color: var(--quiet); }
+  /* The help card: opened by the "?" button, closed by Esc, a click elsewhere or its button. It sits under the header, not over the graph's middle. */
+  #help { position: fixed; top: calc(var(--hh) + 4px); right: 20px; width: min(350px, calc(100vw - 24px)); z-index: 9; padding: 16px 18px 14px; font-size: 13.5px; line-height: 1.45; }
+  #help[hidden] { display: none; }
+  #help { max-height: calc(100vh - var(--hh) - 16px); overflow: auto; }
+  #help h3 { margin: 0 0 8px; font-size: 15px; font-family: var(--head); }
+  #help .only-small { display: none; margin: 0 0 10px; color: var(--text-2); }
+  #help .rows { display: flex; flex-direction: column; gap: 9px; }
+  #help dt { font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; font-weight: 600; color: var(--text-2); }
+  #help dd { margin: 1px 0 0; }
+  #help .x { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border: 0; border-radius: 8px; background: none; color: var(--text-2); font-size: 20px; line-height: 1; cursor: pointer; }
+  #help .x:hover { background: var(--panel-2); color: var(--ink); }
+  #help .done { margin-top: 12px; }
+  /* Graph overlays: section names, the hover / selected / keyboard rings, the keyboard tip and the how-to line.
+     They never take pointer events, so dragging, zooming and tapping the graph work exactly as before. */
+  #overlay { position: fixed; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; }
+  .nlabel { position: absolute; left: 0; top: 0; white-space: nowrap; font: 600 13px/1 var(--ui); letter-spacing: .02em;
+    color: var(--ink); opacity: .92; transition: opacity .25s ease; will-change: transform;
+    text-shadow: 0 0 2px var(--bg), 0 0 3px var(--bg), 0 0 6px var(--bg), 0 0 10px var(--bg); }
+  .nlabel.faded { opacity: .62; }
+  body.settling .nlabel { opacity: 0 !important; }
+  .nlabel.off { opacity: 0; }
+  .ring { position: absolute; left: 0; top: 0; display: none; border-radius: 50%; will-change: transform; }
+  .ring.hover { border: 1.5px solid var(--accent); }
+  .ring.selected { border: 2.5px solid var(--ink); }
+  .ring.focus { border: 2px dashed var(--accent); box-shadow: 0 0 0 2px var(--bg); }
+  /* Home's permanent mark: a thin neutral ring with a faint halo, always on. It is not "selected": that is the solid ring. */
+  .ring.homering { border: 1px solid var(--quiet); border: 1px solid color-mix(in srgb, var(--ink) 55%, transparent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--ink) 9%, transparent); }
+  .ring.homering.pulse { animation: homepulse .8s ease-out; }
+  @keyframes homepulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 70%, transparent), 0 0 0 4px color-mix(in srgb, var(--ink) 9%, transparent); }
+    100% { box-shadow: 0 0 0 22px color-mix(in srgb, var(--accent) 0%, transparent), 0 0 0 4px color-mix(in srgb, var(--ink) 9%, transparent); } }
+  /* The card: one small card beside the bubble you are on. On hover or keyboard focus it is read-only; a click pins it
+     (sections and tags) and then it is interactive, with a button for each page. */
+  #peek { position: fixed; left: 0; top: 0; z-index: 7; width: max-content; max-width: 300px; pointer-events: none;
+    opacity: 0; visibility: hidden; transition: opacity .12s ease; will-change: transform;
+    --pk-meta: var(--quiet); --pk-meta: color-mix(in srgb, var(--ink) 74%, var(--panel));
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.14); padding: 11px 13px; font: 13.5px/1.45 var(--ui);
+    max-height: calc(100vh - 80px); overflow: hidden; }
+  #peek.on { opacity: 1; visibility: visible; }
+  #peek.pinned { pointer-events: auto; max-width: 330px; overflow: auto; box-shadow: 0 10px 34px rgba(0,0,0,.22); border-color: var(--ink); }
+  #peek .pk-t { font-weight: 600; font-size: 15px; padding-right: 26px; }
+  #peek .pk-m, #peek .pk-topics, #peek .more, #peek li .n, #peek li .s, #peek li .d, #peek .pk-hint { color: var(--pk-meta); font-size: 12px; }
+  #peek li .t, #peek li .d, #peek li .n { display: block; }
+  #peek li .d { margin-top: 1px; }
+  #peek .pk-m { margin-top: 1px; }
+  #peek .pk-s { margin-top: 6px; }
+  #peek .pk-topics { margin-top: 7px; }
+  #peek h5 { margin: 10px 0 2px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--pk-meta); font-weight: 600; }
+  #peek ul { list-style: none; margin: 0; padding: 0; }
+  #peek li { padding: 3px 0; }
+  #peek li .t { font-weight: 500; }
+  #peek li .s { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  #peek .pk-go { margin-top: 9px; font-weight: 600; font-size: 12.5px; }
+  #peek .pk-go::before { content: '→ '; color: var(--accent); }
+  #peek .pk-hint { margin-top: 10px; }
+  #peek .pk-row { display: block; width: calc(100% + 16px); margin: 0 -8px; padding: 7px 8px; text-align: left; font: inherit; color: inherit;
+    background: none; border: 0; border-radius: 8px; cursor: pointer; }
+  /* A title you can press is underlined and ends in an arrow; the read-only hover card has neither. */
+  #peek .pk-row .t { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, var(--ink) 38%, transparent); }
+  #peek .pk-row .t::after { content: '→'; margin-left: .35em; color: var(--accent); text-decoration: none; display: inline-block; }
+  #peek .pk-row:hover .t, #peek .pk-row:focus-visible .t { text-decoration-color: var(--accent); text-decoration-thickness: 2px; }
+  #peek .pk-row:hover { background: var(--panel-2); }
+  #peek .pk-row:focus-visible, #peek .pk-open:focus-visible, #peek .pk-close:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent); }
+  #peek .pk-open { display: block; width: 100%; margin-top: 10px; padding: 10px 12px; font: inherit; font-weight: 600; color: var(--ink);
+    background: var(--panel-2); border: 1px solid var(--accent); border-radius: 9px; cursor: pointer; }
+  #peek .pk-close { position: absolute; top: 7px; right: 7px; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px;
+    background: none; color: var(--pk-meta); font-size: 20px; line-height: 1; cursor: pointer; }
+  #peek .pk-close:hover { background: var(--panel-2); color: var(--ink); }
+  #peek .pk-empty { color: var(--ink); }
+  #peek.compact { max-width: 272px; padding: 9px 11px; font-size: 13px; }
+  #peek.compact.pinned { max-width: 296px; }
+  #peek.compact .pk-t { font-size: 14px; }
+  #peek.compact li .s { -webkit-line-clamp: 1; }
+  #peek.sheet { left: 0; right: 0; top: auto; bottom: 0; width: auto; max-width: none !important; transform: none !important; border-radius: 14px 14px 0 0;
+    max-height: 46vh; padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); overflow: auto; box-shadow: 0 -8px 30px rgba(0,0,0,.2); }
+  #peek.sheet.compact { padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); }
+  @media (pointer: coarse) {
+    #peek .pk-row { padding: 12px 8px; min-height: 44px; }
+    #peek .pk-open { min-height: 46px; }
+    #peek .pk-close { width: 44px; height: 44px; top: 2px; right: 2px; }
+    #peek .pk-hint { display: none; }
+  }
+  .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  #graph:focus { outline: none; }
+  body.listmode #overlay, body.listmode #peek { display: none; }
+  @media (max-width: 1100px) { .nlabel { font-size: 12px; } }
+  @media (prefers-reduced-motion: reduce) { .nlabel, #graph, #peek, #panel, #latest summary::after { transition: none; } .ring.homering.pulse { animation: none; border: 3px solid var(--accent); } }
+  /* With a page open the header keeps to the space beside the reading panel (it used to run underneath it, cutting the Graph/List
+     switch in half): the invitation steps aside, and on a window too narrow for the controls they wait until the page is closed. */
+  @media (min-width: 721px) {
+    body.reading header { right: var(--panelw); }
+    body.reading .lede { display: none; }
+  }
+  @media (min-width: 721px) and (max-width: 1250px) { body.reading header .controls { display: none; } }
+  /* Medium windows: the invitation wraps and the controls may drop to a second line rather than crowd the name. */
+  @media (max-width: 1000px) { .lede { max-width: 300px; } .search input { width: 160px; } }
+  /* Small screens: the name and the Graph/List switch on one row; search, Appearance and help on the next. */
   @media (max-width: 720px) {
     body.split #graph, body.split header, body.split #list { left: 0; }
     body.split #side { display: none; }
-    body.split .brand { visibility: visible; }
-    header { flex-wrap: wrap; padding: 10px 12px; }
+    body.split header .id { display: block; }
+    header { display: grid; grid-template-columns: 1fr auto auto; grid-template-areas: "id view view" "find opt help"; gap: 6px 8px; padding: 8px 12px 6px; }
+    header .id { grid-area: id; }
+    .controls { display: contents; }
+    .controls .seg { grid-area: view; align-self: start; justify-self: end; }
+    .controls .search { grid-area: find; }
+    .controls #optBtn { grid-area: opt; }
+    .controls .help { grid-area: help; }
+    .brand { font-size: 19px; }
+    .brand small { font-size: 13px; }
+    .lede { display: none; }
     .search input { width: 100%; }
-    .search { order: 5; width: 100%; }
-    .results { width: 100%; }
-    #latest, #legend, .proto-note { display: none; }
-    #list { inset: 150px 0 0 0; }
-    #options { left: 12px; right: 12px; width: auto; top: 150px; }
+    .results { width: calc(100vw - 24px); right: auto; left: 0; }
+    #help .only-small { display: block; }
+    #help { left: 12px; right: 12px; width: auto; }
+    #options { left: 12px; right: 12px; width: auto; }
     #panel h1 { font-size: 24px; }
+    #panel .body { padding: 18px 18px 40px; }
+    #panel .top { padding: 10px 12px; position: sticky; top: 0; background: var(--panel); z-index: 1; }
+    #closeBtn .lab-d { display: none; } #closeBtn .lab-m { display: inline; }
+    /* The Latest panel becomes one compact bar along the bottom that opens upward. */
+    #latest { left: 0; right: 0; bottom: 0; width: auto; border-radius: 14px 14px 0 0; border-bottom: 0; box-shadow: 0 -6px 22px rgba(0,0,0,.14); padding-bottom: env(safe-area-inset-bottom); }
+    #latest summary { padding: 0 16px; min-height: 48px; }
+    #latest .peekline { display: block; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; font-weight: 500; }
+    #latest[open] .peekline { display: none; }
+  }
+  /* Touch: every control is at least 44px tall. */
+  @media (pointer: coarse) {
+    .btn, .help, .search input { height: 44px; }
+    .help { width: 44px; }
+    .seg button { height: 42px; padding: 0 16px; }
+    .results button { padding: 13px 14px; }
+    .latest a { padding: 12px 0; }
+    #list a { padding: 14px 14px; }
+    .connected button { padding: 12px 0; }
+    #help .x { width: 44px; height: 44px; top: 2px; right: 2px; }
+    #help .done { height: 44px; }
+    #panel .top .btn { min-width: 44px; }
   }
 </style>
 </head>
 <body>
-<div id="graph"></div>
 <aside id="side">
   <h1>Mehul Patankar</h1>
   <div class="role">Engineering manager, back to building</div>
   <p>Fifteen years of writing code, then engineering leadership. Now I'm building again, because AI is changing what leading engineers needs. This is where the work lives.</p>
   <div class="block latest"><h3 class="lbl">Latest</h3><div class="latestItems"></div></div>
-  <div class="block legend"><h3 class="lbl">Sections</h3><div class="legendItems"></div></div>
 </aside>
-<header>
-  <div class="brand" id="brand" title="Home">Mehul Patankar<small>Engineering manager, back to building</small></div>
-  <div class="spacer"></div>
-  <div class="seg" role="group" aria-label="View">
-    <button id="viewGraph" class="on">Graph</button>
-    <button id="viewList">List</button>
+<header id="top">
+  <div class="id">
+    <button class="brand" id="brand" type="button" title="Home: the whole graph">Mehul Patankar<small>Engineering manager, back to building</small></button>
+    <p class="lede" id="lede">Explore the connections between my projects, writing and ideas.</p>
   </div>
-  <button class="btn primary" id="optBtn">Appearance</button>
-  <div class="search">
-    <input id="q" type="search" placeholder="Search pages and tags" autocomplete="off" aria-label="Search">
-    <div class="results" id="results"></div>
+  <div class="controls">
+    <div class="seg" role="group" aria-label="View">
+      <button id="viewGraph" class="on" aria-pressed="true">Graph</button>
+      <button id="viewList" aria-pressed="false">List</button>
+    </div>
+    <button class="btn primary" id="optBtn" aria-expanded="false" aria-controls="options">Appearance</button>
+    <div class="search">
+      <input id="q" type="search" placeholder="Search pages and tags" autocomplete="off" aria-label="Search pages and tags">
+      <div class="results" id="results"></div>
+    </div>
+    <button class="help" id="helpBtn" type="button" aria-label="How to explore the graph" aria-expanded="false" aria-controls="help" title="How to explore">?</button>
   </div>
 </header>
-<div id="quote" title="Click for another" aria-live="off"></div>
-<div id="latest" class="card latest"><h3 class="lbl">Latest</h3><div class="latestItems"></div></div>
-<div id="legend" class="card legend"><h3 class="lbl">Sections</h3><div class="legendItems"></div></div>
+<div id="help" class="card" role="dialog" aria-label="How to explore the graph" hidden>
+  <button class="x" id="helpX" type="button" aria-label="Close help">×</button>
+  <h3>How to explore</h3>
+  <p class="only-small">Explore the connections between my projects, writing and ideas.</p>
+  <dl class="rows">
+    <div><dt>Mouse</dt><dd>Click a bubble: a page opens, a section or tag shows its pages. Hover for a preview. Drag to rotate, scroll to zoom.</dd></div>
+    <div><dt>Touch</dt><dd>Tap a bubble for a preview, then Open page. Drag to rotate, pinch to zoom.</dd></div>
+    <div><dt>Keyboard</dt><dd>Tab to the graph, then use the arrow keys to move between bubbles, Enter or Space to choose one and Esc to close a card. Rotating and zooming need a mouse or touch.</dd></div>
+    <div><dt>Anywhere</dt><dd>Click the name or the centre bubble to reset the view. List shows every page as text, and Search jumps to a page or tag.</dd></div>
+  </dl>
+  <button class="btn done" id="helpDone" type="button">Got it</button>
+</div>
+<div id="graph"></div>
+<div id="overlay" aria-hidden="true"></div>
+<div id="peek" aria-hidden="true" tabindex="-1"></div>
+<div id="sr" class="sr-only" role="status" aria-live="polite"></div>
+<details id="latest" class="card latest" open>
+  <summary><span class="lbl">Latest</span><span class="peekline" id="latestPeek"></span></summary>
+  <div class="latestItems"></div>
+</details>
 <div id="list"></div>
 <div id="options" class="card" role="dialog" aria-label="Appearance">
   <div class="row"><h3 class="lbl">Style</h3><div class="seg" data-opt="style"></div><div class="hint" id="styleHint"></div></div>
@@ -165,7 +330,7 @@
   <button class="btn" id="resetOpt">Reset to default</button> <button class="btn" id="closeOpt">Close</button>
 </div>
 <aside id="panel" aria-live="polite">
-  <div class="top"><div class="crumb" id="crumb"></div><button class="btn" id="copyBtn">Copy link</button><button class="btn" id="closeBtn" aria-label="Close">Close</button></div>
+  <div class="top"><div class="crumb" id="crumb"></div><button class="btn" id="copyBtn">Copy link</button><button class="btn" id="closeBtn" aria-label="Close page"><span class="lab-d">Close</span><span class="lab-m">← Graph</span></button></div>
   <div class="body" id="panelBody"></div>
 </aside>
 
@@ -173,36 +338,34 @@
 <!-- Loads the two files build.py writes, so window.GRAPH_DATA and window.PAGES_DATA exist. -->
 <script src="graph-data.js"></script>
 <script src="pages-data.js"></script>
-<!-- Sayings from content/quotes.yml (written by build.py). Missing file = no sayings. -->
-<script src="quotes-data.js"></script>
 <script>
 // ---------- design options ----------
 const STYLES = {
   night: { name: 'Night', hint: 'Dark green-black, soft colours. Close to secondbrainos.dev.',
-    vars: { bg:'#0f1513', panel:'#151d1a', 'panel-2':'#1b2522', ink:'#e6ece9', quiet:'#93a39c', line:'#2a3632', accent:'#7fd1b9', chip:'#22302b', shadow:'0 10px 40px rgba(0,0,0,.45)',
+    vars: { bg:'#0f1513', panel:'#151d1a', 'panel-2':'#1b2522', ink:'#e6ece9', quiet:'#93a39c', line:'#2a3632', accent:'#7fd1b9', 'accent-text':'#7fd1b9', chip:'#22302b', shadow:'0 10px 40px rgba(0,0,0,.45)',
       ui:"Inter, system-ui, sans-serif", read:"'Source Serif 4', Georgia, serif", head:"'Source Serif 4', Georgia, serif", radius:'14px' },
     sec: { about:'#f2c14e', projects:'#7fd1b9', journal:'#8fb3ff', blog:'#f08a7e', 'system-design':'#c39bff' },
-    tag:'#6f7f78', dim:'#26302d', link:'rgba(140,160,152,0.28)', ref:'rgba(200,225,215,0.75)', fade:'rgba(80,95,90,0.12)', particle:'#d8efe7' },
+    tag:'#83948d', dim:'#34413d', link:'rgba(140,160,152,0.38)', ref:'rgba(200,225,215,0.75)', fade:'rgba(80,95,90,0.2)', particle:'#d8efe7' },
   paper: { name: 'Paper', hint: 'Warm off-white, like a notebook. Calm and very readable.',
-    vars: { bg:'#f6f3ec', panel:'#fffdf8', 'panel-2':'#f1ede3', ink:'#1f2421', quiet:'#6b716c', line:'#e2ddd0', accent:'#2f7d68', chip:'#ece7da', shadow:'0 10px 30px rgba(60,50,30,.12)',
+    vars: { bg:'#f6f3ec', panel:'#fffdf8', 'panel-2':'#f1ede3', ink:'#1f2421', quiet:'#6b716c', line:'#e2ddd0', accent:'#2f7d68', 'accent-text':'#276f5c', chip:'#ece7da', shadow:'0 10px 30px rgba(60,50,30,.12)',
       ui:"Inter, system-ui, sans-serif", read:"'Source Serif 4', Georgia, serif", head:"'Source Serif 4', Georgia, serif", radius:'14px' },
     sec: { about:'#b8860b', projects:'#2f7d68', journal:'#3d5fa8', blog:'#b54a3c', 'system-design':'#7a4fc0' },
-    tag:'#a39d8e', dim:'#e4dfd3', link:'rgba(120,110,90,0.28)', ref:'rgba(60,70,65,0.6)', fade:'rgba(150,140,120,0.15)', particle:'#2f7d68' },
+    tag:'#8f8978', dim:'#d3cdbd', link:'rgba(120,110,90,0.4)', ref:'rgba(60,70,65,0.6)', fade:'rgba(150,140,120,0.24)', particle:'#2f7d68' },
   blueprint: { name: 'Blueprint', hint: 'Engineering drawing: deep blue, white lines, monospace type.',
-    vars: { bg:'#0b1f3a', panel:'#0f2747', 'panel-2':'#14345e', ink:'#e8f1ff', quiet:'#8fb0d9', line:'#24497a', accent:'#5ad1ff', chip:'#173b69', shadow:'0 10px 40px rgba(0,10,30,.5)',
+    vars: { bg:'#0b1f3a', panel:'#0f2747', 'panel-2':'#14345e', ink:'#e8f1ff', quiet:'#8fb0d9', line:'#24497a', accent:'#5ad1ff', 'accent-text':'#5ad1ff', chip:'#173b69', shadow:'0 10px 40px rgba(0,10,30,.5)',
       ui:"'IBM Plex Sans', system-ui, sans-serif", read:"'IBM Plex Sans', system-ui, sans-serif", head:"'IBM Plex Mono', ui-monospace, monospace", radius:'4px' },
     sec: { about:'#ffd166', projects:'#5ad1ff', journal:'#ffffff', blog:'#ff8fa3', 'system-design':'#b8f2a6' },
-    tag:'#4f74a6', dim:'#16335a', link:'rgba(120,170,230,0.35)', ref:'rgba(220,235,255,0.85)', fade:'rgba(60,100,160,0.15)', particle:'#5ad1ff' },
+    tag:'#6a8fc2', dim:'#1f4274', link:'rgba(120,170,230,0.45)', ref:'rgba(220,235,255,0.85)', fade:'rgba(60,100,160,0.22)', particle:'#5ad1ff' },
   neon: { name: 'Neon', hint: 'Near-black with bright colours. Bold and techy, best with Flowing.',
-    vars: { bg:'#050507', panel:'#0d0d12', 'panel-2':'#17171f', ink:'#f2f2f7', quiet:'#8a8aa0', line:'#23232e', accent:'#ff4fd8', chip:'#1a1a24', shadow:'0 10px 40px rgba(0,0,0,.6)',
+    vars: { bg:'#050507', panel:'#0d0d12', 'panel-2':'#17171f', ink:'#f2f2f7', quiet:'#8a8aa0', line:'#23232e', accent:'#ff4fd8', 'accent-text':'#ff4fd8', chip:'#1a1a24', shadow:'0 10px 40px rgba(0,0,0,.6)',
       ui:"'Space Grotesk', system-ui, sans-serif", read:"Inter, system-ui, sans-serif", head:"'Space Grotesk', system-ui, sans-serif", radius:'16px' },
     sec: { about:'#ffe14f', projects:'#39f3bb', journal:'#4fb3ff', blog:'#ff4fd8', 'system-design':'#a06bff' },
-    tag:'#4a4a5e', dim:'#15151c', link:'rgba(130,130,170,0.3)', ref:'rgba(255,255,255,0.7)', fade:'rgba(60,60,80,0.15)', particle:'#ffffff' },
+    tag:'#62627a', dim:'#22222d', link:'rgba(130,130,170,0.4)', ref:'rgba(255,255,255,0.7)', fade:'rgba(60,60,80,0.22)', particle:'#ffffff' },
   mono: { name: 'Mono', hint: 'White, black and one orange accent. Minimal, like a printed page.',
-    vars: { bg:'#ffffff', panel:'#ffffff', 'panel-2':'#f4f4f4', ink:'#111111', quiet:'#6b6b6b', line:'#e6e6e6', accent:'#e4572e', chip:'#f1f1f1', shadow:'0 8px 24px rgba(0,0,0,.08)',
+    vars: { bg:'#ffffff', panel:'#ffffff', 'panel-2':'#f4f4f4', ink:'#111111', quiet:'#6b6b6b', line:'#e6e6e6', accent:'#e4572e', 'accent-text':'#b8400f', chip:'#f1f1f1', shadow:'0 8px 24px rgba(0,0,0,.08)',
       ui:"Inter, system-ui, sans-serif", read:"'Source Serif 4', Georgia, serif", head:"Inter, system-ui, sans-serif", radius:'6px' },
     sec: { about:'#e4572e', projects:'#111111', journal:'#4d4d4d', blog:'#8a8a8a', 'system-design':'#b5b5b5' },
-    tag:'#d0d0d0', dim:'#f0f0f0', link:'rgba(0,0,0,0.12)', ref:'rgba(0,0,0,0.55)', fade:'rgba(0,0,0,0.05)', particle:'#e4572e' }
+    tag:'#b4b4b4', dim:'#e0e0e0', link:'rgba(0,0,0,0.2)', ref:'rgba(0,0,0,0.55)', fade:'rgba(0,0,0,0.1)', particle:'#e4572e' }
 };
 const OPTIONS = {
   style:  { night:'Night', paper:'Paper', blueprint:'Blueprint', neon:'Neon', mono:'Mono' },
@@ -253,51 +416,105 @@ function latestPages(count) {
 // Three states: nothing chosen (only the centre and the sections show colour), hovering a bubble
 // (its neighbours light up too), and clicked (the highlight stays until you click the background).
 const hiNodes = new Set(), hiLinks = new Set();
-let hoverNode = null;
+let hoverNode = null, kbNode = null, selectedNode = null;   // mouse hover, keyboard focus, last clicked
+let pinnedNode = null, rowNode = null;                      // the node whose card is pinned, and the card row the pointer is on
+const hv = () => hoverNode || kbNode;
 function setHighlight(node) {
+  if (pinnedNode && node !== pinnedNode) resetPinnedCard();   // anything else being selected (or nothing) releases the pinned card
   hiNodes.clear(); hiLinks.clear();
+  selectedNode = node;
   if (node) { hiNodes.add(node); node.neighbors.forEach(n => hiNodes.add(n)); node.edges.forEach(l => hiLinks.add(l)); }
   refresh();
 }
 function sectionColor(k) { return S().sec[k] || '#888'; }
 function isLit(n) {
+  if (n.kind === 'home') return true;           // the anchor never fades, whatever is selected
   if (hiNodes.size) return hiNodes.has(n);
-  if (n.kind === 'home' || n.kind === 'section') return true;
-  return !!hoverNode && (n === hoverNode || hoverNode.neighbors.has(n));
+  if (n.kind === 'section') return true;
+  const h = hv();
+  return !!h && (n === h || h.neighbors.has(n));
 }
 function isLinkLit(l) {
   if (hiLinks.size) return hiLinks.has(l);
   if (l.type === 'hub') return true;
-  return !!hoverNode && hoverNode.edges.includes(l);
+  const h = hv();
+  return !!h && h.edges.includes(l);
+}
+// While something is selected, the rest fades toward the background rather than almost vanishing: other sections keep
+// about half their colour, other pages less, tags least. With nothing selected the quiet default look is unchanged.
+const rgbOf = c => { c = String(c).trim(); if (c[0] === '#') { if (c.length === 4) c = '#' + [...c.slice(1)].map(x => x + x).join(''); const v = parseInt(c.slice(1), 16); return [v >> 16 & 255, v >> 8 & 255, v & 255]; } return (c.match(/[\d.]+/g) || [128, 128, 128]).slice(0, 3).map(Number); };
+const mixToward = (c, bg, t) => { const a = rgbOf(c), b = rgbOf(bg); return 'rgb(' + a.map((v, i) => Math.round(v * (1 - t) + b[i] * t)).join(',') + ')'; };
+const scaleAlpha = (c, k) => { const m = String(c).match(/^rgba\(([^)]+)\)$/); if (!m) return c; const p = m[1].split(',').map(x => x.trim()); return 'rgba(' + p[0] + ',' + p[1] + ',' + p[2] + ',' + (parseFloat(p[3]) * k).toFixed(3) + ')'; };
+const FADE = { section: 0.42, page: 0.55, tag: 0.3 }, FLOOR = { section: 1.7, page: 1.35, tag: 1.3 };   // how far to fade, and the least contrast with the background to keep
+const lum = c => { const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; const [r, g, b] = rgbOf(c); return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+const contrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+function fadedColor(base, bg, t, floor) {
+  // Fade toward the background, but never below `floor` contrast: a theme whose colour is already light (Mono's grey) fades less.
+  for (let k = t; k > 0; k -= 0.04) { const c = mixToward(base, bg, k); if (contrast(c, bg) >= floor) return c; }
+  return mixToward(base, bg, 0);
 }
 function nodeColor(n) {
-  if (!isLit(n)) return S().dim;
-  if (n.kind === 'home') return S().vars.ink;
-  return n.kind === 'tag' ? S().tag : sectionColor(n.section);
+  const base = n.kind === 'home' ? S().vars.ink : n.kind === 'tag' ? S().tag : sectionColor(n.section);
+  if (isLit(n)) return base;
+  return hiNodes.size ? fadedColor(base, S().vars.bg, FADE[n.kind] || 0.5, FLOOR[n.kind] || 1.3) : S().dim;
 }
-function linkColor(l) { if (!isLinkLit(l)) return S().fade; return l.type === 'ref' ? S().ref : S().link; }
-function linkWidth(l) { return (hiLinks.has(l) || (!hiLinks.size && hoverNode && hoverNode.edges.includes(l))) ? 1.6 : (l.type === 'ref' || l.type === 'hub') ? 0.9 : 0.4; }
+function linkColor(l) {
+  if (isLinkLit(l)) return (hiLinks.size || hv()) ? S().ref : (l.type === 'ref' ? S().ref : S().link);   // a selection's own connections stand out
+  return hiNodes.size ? scaleAlpha(S().link, 0.8) : S().fade;
+}
+const linkEnd = e => typeof e === 'object' ? e : byId[e];
+// A line is drawn heavier when it is highlighted, or when it joins the pinned node to the card row the pointer is on.
+const joinsRow = l => !!(pinnedNode && rowNode && ((linkEnd(l.source) === pinnedNode && linkEnd(l.target) === rowNode) || (linkEnd(l.source) === rowNode && linkEnd(l.target) === pinnedNode)));
+function linkWidth(l) { return joinsRow(l) ? 2.8 : (hiLinks.has(l) || (!hiLinks.size && hv() && hv().edges.includes(l))) ? 1.6 : (l.type === 'ref' || l.type === 'hub') ? 0.9 : 0.4; }
 
 // ---------- graph ----------
 // The centre node is pinned to the middle of the graph, so everything always radiates from it.
+// While the bubbles settle after load, positions are still changing, so anything that frames the graph waits for them to finish.
+const settleQueue = [];
+function whenSettled(fn) { if (!document.body.classList.contains('settling')) fn(); else settleQueue.push(fn); }
+function endSettling() { document.body.classList.remove('settling'); settleQueue.splice(0).forEach(fn => fn()); }
 const home = byId.home;
 if (home) { home.fx = 0; home.fy = 0; home.fz = 0; }
 
 const Graph = ForceGraph3D()(document.getElementById('graph'))
   .graphData({ nodes, links })
   .nodeId('id').nodeVal('val').nodeRelSize(4).nodeOpacity(0.95).nodeResolution(16)
-  .nodeLabel(n => `<div class="tip"><b>${n.title}</b><span>${n.summary || (n.kind === 'tag' ? 'Tag' : n.kind === 'home' ? 'Home: click to see everything' : 'Section')}</span></div>`)
+  .nodeLabel(() => '')   // the peek card below replaces the library's own tooltip
   .nodeColor(nodeColor).linkColor(linkColor)
   .linkWidth(linkWidth)
   .linkOpacity(1)
   .linkDirectionalParticleWidth(1.6)
   .linkDirectionalParticleSpeed(0.005)
-  .onNodeClick(n => n.kind === 'home' ? goHome() : n.kind === 'page' ? openPage(n.id) : focusOn(n))
-  .onNodeHover(n => { hoverNode = n; document.body.style.cursor = n ? 'pointer' : ''; refresh(); })
-  .onBackgroundClick(() => setHighlight(null))
-  .cooldownTicks(120);
-Graph.d3Force('charge').strength(-120);
-Graph.d3Force('link').distance(l => l.type === 'hub' ? 90 : l.type === 'belongs' ? 60 : l.type === 'tag' ? 40 : 70);
+  .showNavInfo(false)
+  // Bubbles are not draggable: pressing one used to restart the physics (the whole graph reshuffled under the pointer) and
+  // dragging Home unpinned it from the centre. Dragging anywhere now just rotates the graph, on mouse and touch alike.
+  .enableNodeDrag(false)
+  .warmupTicks(120).cooldownTicks(0)   // first pass: work the layout out up front, so it can be framed before anything is drawn
+  .onEngineStop(endSettling);
+// Spacing: the sections push each other (and everything) apart harder than pages and tags do, and sit further from the centre.
+Graph.d3Force('charge').strength(n => n.kind === 'section' ? -420 : n.kind === 'home' ? -300 : -110);
+Graph.d3Force('link').distance(l => l.type === 'hub' ? 130 : l.type === 'belongs' ? 70 : l.type === 'tag' ? 45 : 80);
+// No two bubbles may overlap in space. The layout does not need this today (nothing touches), but it keeps a new page or
+// tag from ever settling inside another bubble, Home included. A pinned node (Home) never moves; the other one gives way.
+Graph.d3Force('collide', (() => {
+  let ns = [];
+  const R = n => Math.cbrt(n.val || 1) * 4 + 3, pinned = n => n.fx != null;
+  const force = () => {
+    for (let i = 0; i < ns.length; i++) for (let j = i + 1; j < ns.length; j++) {
+      const a = ns[i], b = ns[j], wa = pinned(a) ? 0 : 1, wb = pinned(b) ? 0 : 1;
+      if (!wa && !wb) continue;
+      let dx = b.x - a.x, dy = b.y - a.y, dz = (b.z || 0) - (a.z || 0), d = Math.hypot(dx, dy, dz);
+      const min = R(a) + R(b);
+      if (d >= min) continue;
+      if (d < 1e-6) { dx = 1; d = 1; }
+      const k = (min - d) / d * 0.7, t = wa + wb;
+      a.vx -= dx * k * wa / t; a.vy -= dy * k * wa / t; if (a.vz !== undefined) a.vz -= dz * k * wa / t;
+      b.vx += dx * k * wb / t; b.vy += dy * k * wb / t; if (b.vz !== undefined) b.vz += dz * k * wb / t;
+    }
+  };
+  force.initialize = nodes => { ns = nodes; };
+  return force;
+})());
 
 function refresh() {
   Graph.backgroundColor(S().vars.bg);
@@ -305,26 +522,164 @@ function refresh() {
     .linkDirectionalParticleColor(() => S().particle)
     .linkDirectionalParticles(l => opt.motion === 'flow' && l.type === 'ref' ? 2 : 0);
 }
+// Framing: the graph is zoomed so it fills about 65% of the window height (never more than 80% of its width),
+// and centred. It is measured from where the bubbles actually land on screen, so it does not depend on the
+// layout, the window size or the machine.
+const FILL_H = 0.65, FILL_W = 0.8;
+const reduceMotion = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+let homeDir = null, homeUp = null;   // the opening viewing angle, so that Home can bring it back
+function viewRegion() {
+  // The part of the window the graph may use: all of it, or what is left beside the reading panel (which sits on the right).
+  const w = Graph.width(), h = Graph.height();
+  const pw = document.body.classList.contains('reading') && innerWidth > 720 ? panel.offsetWidth : 0;   // the reading panel's real width
+  const rw = w - pw >= 240 ? w - pw : w;
+  return { w: rw, h, cx: rw / 2, cy: h / 2 };
+}
+function discsOf(list) {
+  // Where each bubble is on screen (centre and radius in pixels, canvas coordinates).
+  const cam = Graph.camera(), h = Graph.height(); cam.updateMatrixWorld(true);
+  const out = [];
+  list.forEach(n => {
+    if (n.x === undefined) return;
+    const p = Graph.graph2ScreenCoords(n.x, n.y, n.z), d = Math.hypot(n.x - cam.position.x, n.y - cam.position.y, n.z - cam.position.z) || 1;
+    out.push({ n, x: p.x, y: p.y, d, r: Math.cbrt(n.val || 1) * 4 * (h / 2) / (d * Math.tan(cam.fov * Math.PI / 360)) });
+  });
+  return out;
+}
+const boxOfDiscs = ds => ds.length ? { l: Math.min(...ds.map(c => c.x - c.r)), r: Math.max(...ds.map(c => c.x + c.r)), t: Math.min(...ds.map(c => c.y - c.r)), b: Math.max(...ds.map(c => c.y + c.r)) } : null;
+const camPose = () => ({ pos: Graph.camera().position.clone(), look: Graph.controls().target.clone() });
+// Graph.cameraPosition() only hands the new target to the controls; the camera itself is not turned to face it until the next
+// frame. Everything here measures the screen straight away, so each move also turns the camera at once.
+function place(pos, look) {
+  Graph.cameraPosition({ x: pos.x, y: pos.y, z: pos.z }, { x: look.x, y: look.y, z: look.z }, 0);
+  const cam = Graph.camera(); cam.lookAt(look.x, look.y, look.z); cam.updateMatrixWorld(true);
+}
+function setPose(p) { place(p.pos, p.look); }
+function glide(to, from, ms) {
+  // Leave the camera at `to` straight away, or glide there from `from`. Reduced motion always jumps.
+  if (!ms || reduceMotion()) { setPose(to); return; }
+  setPose(from); Graph.cameraPosition({ x: to.pos.x, y: to.pos.y, z: to.pos.z }, { x: to.look.x, y: to.look.y, z: to.look.z }, ms);
+}
+function fitSubset(list, region, fill, shift, rot, minDist) {
+  // Zoom so `list` fills about `fill` of the region's height (never more than FILL_W of its width), centred in it.
+  // rot = a small turn (yaw, pitch) of the viewing angle about the graph first; minDist = never zoom in closer than this.
+  Graph.zoomToFit(0, 0);   // start from the real bounds of the layout, keeping the viewing angle
+  const cam = Graph.camera(), ctl = Graph.controls();
+  cam.lookAt(ctl.target.x, ctl.target.y, ctl.target.z); cam.updateMatrixWorld(true);
+  if (rot && (rot.yaw || rot.pitch)) {
+    cam.updateMatrixWorld(true);
+    const c = ctl.target.clone(), up = cam.position.clone().setFromMatrixColumn(cam.matrixWorld, 1).normalize(), right = cam.position.clone().setFromMatrixColumn(cam.matrixWorld, 0).normalize();
+    const v = cam.position.clone().sub(c).applyAxisAngle(up, rot.yaw || 0).applyAxisAngle(right, rot.pitch || 0);
+    place(c.clone().add(v), c);
+  }
+  for (let pass = 0; pass < 4; pass++) {   // perspective is not linear, so refine a few times
+    let bx = boxOfDiscs(discsOf(list)); if (!bx) return null;
+    let f = Math.min(fill * region.h / (bx.b - bx.t), FILL_W * region.w / (bx.r - bx.l));
+    const look = ctl.target.clone(), dist = cam.position.distanceTo(look);
+    if (minDist && dist / f < minDist) f = dist / minDist;
+    place({ x: look.x + (cam.position.x - look.x) / f, y: look.y + (cam.position.y - look.y) / f, z: look.z + (cam.position.z - look.z) / f }, look);
+    bx = boxOfDiscs(discsOf(list));
+    const dx = (bx.l + bx.r) / 2 - region.cx, dy = (bx.t + bx.b) / 2 - (region.cy + shift);
+    const perPx = 2 * cam.position.distanceTo(ctl.target) * Math.tan(cam.fov * Math.PI / 360) / region.h;
+    const right = cam.position.clone().setFromMatrixColumn(cam.matrixWorld, 0), up = cam.position.clone().setFromMatrixColumn(cam.matrixWorld, 1);
+    const sh = right.multiplyScalar(dx * perPx).addScaledVector(up, -dy * perPx);
+    place({ x: cam.position.x + sh.x, y: cam.position.y + sh.y, z: cam.position.z + sh.z }, { x: ctl.target.x + sh.x, y: ctl.target.y + sh.y, z: ctl.target.z + sh.z });
+  }
+  return camPose();
+}
+function blocked() {
+  // True if any bubble sits under the header, the how-to line, or the Latest / Sections panels.
+  const c = document.getElementById('graph').getBoundingClientRect(), cam = Graph.camera(), h = Graph.height();
+  const rects = uiRects();
+  return nodes.some(n => {
+    if (n.x === undefined) return false;
+    const p = Graph.graph2ScreenCoords(n.x, n.y, n.z), x = c.left + p.x, y = c.top + p.y;
+    const d = Math.hypot(n.x - cam.position.x, n.y - cam.position.y, n.z - cam.position.z) || 1;
+    const r = Math.cbrt(n.val || 1) * 4 * (h / 2) / (d * Math.tan(cam.fov * Math.PI / 360)) + 6;
+    return rects.some(b => Math.hypot(x - Math.max(b.left, Math.min(x, b.right)), y - Math.max(b.top, Math.min(y, b.bottom))) < r);
+  });
+}
+let readStart = null;   // the viewing angle a page was opened from, so closing it brings that angle back
+function fitView(ms, restoreAngle) {
+  // Frame the whole graph. restoreAngle = true brings back the opening angle (what Home does); an object {dir, up} brings back that one.
+  // On a short window the graph backs off a little (and lifts) rather than run under a panel.
+  const from = camPose(), cam = Graph.camera();
+  const orient = restoreAngle === true ? (homeDir && { dir: homeDir, up: homeUp }) : restoreAngle;
+  if (orient) {
+    const look = from.look.clone(), d = from.pos.distanceTo(look);
+    cam.up.copy(orient.up); place(look.clone().addScaledVector(orient.dir, d), look);
+  }
+  const to = overviewPose(viewRegion());
+  if (!to) { setPose(from); return; }
+  glide(to, orient ? camPose() : from, ms);
+}
+function overviewPose(region) {
+  // The whole graph framed in `region`, backing off a little (and lifting) if it would otherwise run under a panel.
+  let to, fill = FILL_H, shift = 0;
+  for (let k = 0; k < 10; k++) { to = fitSubset(nodes, region, fill, shift); if (!to || !blocked()) break; fill *= 0.94; shift -= 0.012 * Graph.height(); }
+  return to;
+}
+// How well a framing keeps the important bubbles apart and on screen. 0 is perfect. Home overlapping the page you opened
+// counts most, then either of them overlapping a section, then anything else; a bubble cut off by the edge also counts.
+const headerBottom = () => Math.ceil(document.getElementById('top').getBoundingClientRect().bottom);
+function uiRects(region) {
+  // The header's name, invitation and controls, and the Latest panel: bubbles should not sit under them.
+  const rs = ['latest'].map(id => document.getElementById(id)).concat([...document.querySelectorAll('.brand, .lede, header .seg, header .btn, header .search, header .help')])
+    .filter(e => e && getComputedStyle(e).display !== 'none').map(e => e.getBoundingClientRect());
+  return region ? rs.filter(r => r.left < region.w) : rs;
+}
+function overlapScore(list, sel, region) {
+  const ds = discsOf(list), h = Graph.height(); let score = 0;
+  const ui = uiRects(region);
+  ds.forEach(c => ui.forEach(b => { const d = Math.hypot(c.x - Math.max(b.left, Math.min(c.x, b.right)), c.y - Math.max(b.top, Math.min(c.y, b.bottom))); if (d < c.r + 6) score += 14 + (c.r + 6 - d); }));
+  for (let i = 0; i < ds.length; i++) for (let j = i + 1; j < ds.length; j++) {
+    const a = ds[i], b = ds[j], gap = a.r + b.r + 4 - Math.hypot(a.x - b.x, a.y - b.y);
+    if (gap <= 0) continue;
+    const home = a.n.kind === 'home' || b.n.kind === 'home', pick = a.n === sel || b.n === sel, sec = a.n.kind === 'section' || b.n.kind === 'section';
+    score += gap * (home && pick ? 14 : (home || pick) && sec ? 10 : (home || pick) ? 6 : 2);
+  }
+  ds.forEach(c => { score += 0.6 * (Math.max(0, 24 - (c.x - c.r)) + Math.max(0, c.x + c.r - (region.w - 24)) + Math.max(0, Math.max(72, headerBottom()) - (c.y - c.r)) + Math.max(0, c.y + c.r - (h - 24))); });
+  return score;
+}
+function framePage(n, ms) {
+  // Opening a page: keep Home, the sections, the page and its neighbours in view beside the reading panel, not too close,
+  // and if the page would sit on Home (or a section) turn the view by the smallest amount that separates them.
+  if (document.body.classList.contains('listmode') || n.x === undefined) return;
+  const region = viewRegion(), from = camPose();
+  const list = [...new Set([home, ...sectionNodes, n, ...n.neighbors])];
+  const full = overviewPose({ w: Graph.width(), h: Graph.height(), cx: Graph.width() / 2, cy: Graph.height() / 2 });
+  const minDist = full ? full.pos.distanceTo(full.look) * 0.88 : 0;   // never closer than 88% of the overview distance
+  // Options, cheapest first: a small turn of the view, a slightly smaller graph, or a small lift, before a bigger turn.
+  const opts = [], H = Graph.height();
+  [0.65, 0.58, 0.5, 0.44].forEach(fill => [0, -0.05, -0.1].forEach(lift => [0, 12, -12, 24, -24, 40, -40].forEach(yaw => [0, 10, -10].forEach(pitch =>
+    opts.push({ fill, lift, yaw, pitch, cost: Math.abs(yaw) + Math.abs(pitch) + (0.65 - fill) * 160 + Math.abs(lift) * 100 })))));
+  opts.sort((a, b) => a.cost - b.cost);
+  let best = null;
+  for (const o of opts) {
+    setPose(from);
+    const to = fitSubset(list, region, o.fill, o.lift * H, { yaw: o.yaw * Math.PI / 180, pitch: o.pitch * Math.PI / 180 }, minDist);
+    if (!to) continue;
+    const sc = overlapScore(list, n, region);
+    if (!best || sc < best.sc - 0.5) best = { to, sc };
+    if (sc === 0) break;   // the cheapest option that leaves nothing overlapping, cut off or under a panel
+  }
+  if (!best) { setPose(from); return; }
+  glide(best.to, from, ms);
+}
+function revealGraph() { document.getElementById('graph').classList.add('ready'); }
 function sizeGraph() {
   const left = document.body.classList.contains('split') && window.innerWidth > 720 ? parseInt(getComputedStyle(document.body).getPropertyValue('--side')) : 0;
   Graph.width(window.innerWidth - left).height(window.innerHeight);
 }
-function focusOn(n) {
-  if (!n) return;
-  setHighlight(n);
-  const go = () => {
-    const d = 260, r = 1 + d / Math.hypot(n.x || 1, n.y || 1, n.z || 1);
-    const pos = opt.depth === 'd2' ? { x: n.x, y: n.y, z: d } : { x: n.x * r, y: n.y * r, z: n.z * r };
-    Graph.cameraPosition(pos, n, 1200);
-  };
-  if (n.x === undefined) setTimeout(go, 1200); else go();
-}
-
 // ---------- panel ----------
 const panel = document.getElementById('panel'), panelBody = document.getElementById('panelBody');
 function fmtDate(d) { if (!d) return ''; const [y, m, day] = d.split('-'); return `${Number(day)} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(m) - 1]} ${y}`; }
+let lastFocus = null;   // what had focus before the page opened, so closing it can give focus back
 function openPage(id, fromHash) {
   const n = byId[id]; if (!n || n.kind !== 'page') return;
+  setHelp(false); setOptions(false);   // their cards would only end up under the reading panel
+  if (!panel.classList.contains('open')) { const a = document.activeElement; lastFocus = a && a !== document.body && !panel.contains(a) ? a : null; }
+  if (!document.body.classList.contains('reading') && !document.body.classList.contains('listmode')) readStart = { dir: Graph.camera().position.clone().sub(Graph.controls().target).normalize(), up: Graph.camera().up.clone() };
   const others = [...n.neighbors].filter(x => x.kind === 'page');
   document.getElementById('crumb').textContent = SECTIONS[n.section].title;
   panelBody.innerHTML = `
@@ -335,20 +690,26 @@ function openPage(id, fromHash) {
     <div class="connected"><h4>Connected to</h4>${others.length ? others.map(o => `<button data-open="${o.id}">${o.title}<span>${SECTIONS[o.section].title}</span></button>`).join('') : '<div class="meta">Nothing yet</div>'}</div>`;
   panel.classList.add('open'); document.body.classList.add('reading');
   if (!fromHash) { try { history.replaceState(null, '', '#/read/' + id); } catch (e) {} }
-  if (!document.body.classList.contains('listmode')) focusOn(n);
+  setHighlight(n);                   // the open page is the active node, and stays so while its panel is open
+  // Frame the graph for this page. If the layout is still settling (a direct link or a reload), wait: the same framing and the same
+  // zoom floor then apply as when a page is opened by a click.
+  whenSettled(() => { if (selectedNode === n && panel.classList.contains('open')) framePage(n, 800); });
 }
-function closePanel() { panel.classList.remove('open'); document.body.classList.remove('reading'); setHighlight(null); Graph.zoomToFit(900, 60); try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
+function closePanel(opts) { const back0 = lastFocus; lastFocus = null; panel.classList.remove('open'); document.body.classList.remove('reading'); setHighlight(null); const back = opts && opts.restoreAngle ? true : readStart; readStart = null; fitView(900, back);
+  if (!(opts && opts.keepAddress)) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }   // keepAddress: the browser already moved the address (Back / Forward), so leave it and the history alone
+  if (back0 && document.contains(back0) && !(opts && opts.restoreAngle)) back0.focus({ preventScroll: true }); }
 // Home: the centre bubble and the name in the top-left both do this. Close any page, clear the
 // highlight and search, show the graph, and fit the whole graph back into view.
 function goHome() {
-  closePanel(); setView('graph');
+  closePanel({ restoreAngle: true }); setView('graph');
   results.style.display = 'none'; q.value = '';
+  pulseHome();   // visible feedback even when the graph is already home, so a click never seems to do nothing
 }
 document.getElementById('brand').onclick = goHome;
 panelBody.addEventListener('click', e => {
   const t = e.target.closest('[data-tag],[data-open]'); if (!t) return;
   if (t.dataset.open) openPage(t.dataset.open);
-  else { panel.classList.remove('open'); document.body.classList.remove('reading'); setView('graph'); focusOn(byId['tag:' + t.dataset.tag]); }
+  else { panel.classList.remove('open'); document.body.classList.remove('reading'); setView('graph'); pinNode(byId['tag:' + t.dataset.tag]); }
 });
 document.getElementById('closeBtn').onclick = closePanel;
 document.getElementById('copyBtn').onclick = async e => {
@@ -357,68 +718,43 @@ document.getElementById('copyBtn').onclick = async e => {
   setTimeout(() => e.target.textContent = 'Copy link', 1500);
 };
 
-// ---------- latest, legend, list ----------
+// ---------- latest and list ----------
+// Both are real links (so they can be reached with Tab and opened in the usual way); a plain click opens the page in the panel.
 const dated = latestPages(3);
-document.querySelectorAll('.latestItems').forEach(el => el.innerHTML = dated.map(p => `<a data-open="${p.id}">${p.title}<span>${SECTIONS[p.section].title} · ${fmtDate(p.date)}</span></a>`).join(''));
+document.querySelectorAll('.latestItems').forEach(el => el.innerHTML = dated.map(p => `<a href="#/read/${p.id}" data-open="${p.id}"><span class="t">${p.title}</span><span class="m">${SECTIONS[p.section].title} · ${fmtDate(p.date)}</span></a>`).join(''));
+document.getElementById('latestPeek').textContent = dated[0] ? dated[0].title : '';
 document.addEventListener('click', e => {
-  const a = e.target.closest('.latest [data-open], #list [data-open]'); if (a) openPage(a.dataset.open);
-  const d = e.target.closest('.legend [data-sec]'); if (d) { setView('graph'); focusOn(byId['section:' + d.dataset.sec]); }
+  const a = e.target.closest('.latest [data-open], #list [data-open]');
+  if (a && !(e.metaKey || e.ctrlKey || e.shiftKey || e.button)) { e.preventDefault(); openPage(a.dataset.open); }
 });
-function renderLegend() {
-  document.querySelectorAll('.legendItems').forEach(el => el.innerHTML = Object.entries(SECTIONS).map(([k, s]) => `<div data-sec="${k}"><i style="background:${sectionColor(k)}"></i>${s.title}</div>`).join(''));
-}
+// The Latest panel is open on a wide screen and a compact bar on a narrow one.
+const latestEl = document.getElementById('latest');
+let wasNarrow = null;
+function syncLatest() { const narrow = innerWidth <= 720; if (narrow !== wasNarrow) { latestEl.open = !narrow; wasNarrow = narrow; } }
+syncLatest();
 function renderList() {
   document.getElementById('list').innerHTML = Object.entries(SECTIONS).map(([k, s]) => {
     const ps = pageNodes.filter(p => p.section === k); if (!ps.length) return '';
-    return `<section><h2><i style="background:${sectionColor(k)}"></i>${s.title}</h2>${ps.map(p => `<a data-open="${p.id}">${p.title}<span>${p.summary}</span></a>`).join('')}</section>`;
+    return `<section><h2><i style="background:${sectionColor(k)}"></i>${s.title}</h2>${ps.map(p => `<a href="#/read/${p.id}" data-open="${p.id}">${p.title}<span>${p.summary}</span></a>`).join('')}</section>`;
   }).join('');
 }
-
-// ---------- sayings ----------
-// A saying fades in at the bottom every 25 seconds, drawn from all sayings in quotes.yml.
-const QUOTES = window.QUOTES_DATA || [], QUOTE_EVERY_MS = 25000;
-const quoteEl = document.getElementById('quote');
-let quoteLast = '', quoteTimer = null, quoteSwap = null, quoteHover = false;
-function quotePool() { return QUOTES; }   // every saying rotates for everyone (tags in quotes.yml are kept for later)
-function pickQuote() {
-  const pool = quotePool();
-  if (!pool.length) return null;
-  const others = pool.filter(q => q.text !== quoteLast);   // never the same one twice in a row
-  const from = others.length ? others : pool;
-  return from[Math.floor(Math.random() * from.length)];
-}
-function showQuote() {
-  clearTimeout(quoteTimer); clearTimeout(quoteSwap);
-  const q = pickQuote();
-  if (!q) return;
-  quoteEl.classList.remove('show');
-  quoteSwap = setTimeout(() => {   // wait for the fade-out, then swap the text (textContent: never treated as HTML)
-    quoteEl.textContent = '\u201C' + q.text + '\u201D';
-    if (q.by) { const by = document.createElement('span'); by.className = 'by'; by.textContent = q.by; quoteEl.appendChild(by); }
-    quoteLast = q.text;
-    quoteEl.classList.add('show');
-  }, quoteEl.classList.contains('show') ? 700 : 0);
-  quoteTimer = setTimeout(nextQuote, QUOTE_EVERY_MS);
-}
-function nextQuote() { if (quoteHover) { quoteTimer = setTimeout(nextQuote, 2000); return; } showQuote(); }   // paused while the mouse is on it
-quoteEl.addEventListener('mouseenter', () => { quoteHover = true; });
-quoteEl.addEventListener('mouseleave', () => { quoteHover = false; });
-quoteEl.addEventListener('click', showQuote);
-setTimeout(showQuote, 600);
 
 // ---------- view toggle ----------
 function setView(v) {
   document.body.classList.toggle('listmode', v === 'list');
   document.getElementById('viewGraph').classList.toggle('on', v === 'graph');
   document.getElementById('viewList').classList.toggle('on', v === 'list');
+  document.getElementById('viewGraph').setAttribute('aria-pressed', v === 'graph'); document.getElementById('viewList').setAttribute('aria-pressed', v === 'list');
 }
 document.getElementById('viewGraph').onclick = () => setView('graph');
 document.getElementById('viewList').onclick = () => setView('list');
 
 // ---------- options panel ----------
 const optPanel = document.getElementById('options');
-document.getElementById('optBtn').onclick = () => optPanel.classList.toggle('open');
-document.getElementById('closeOpt').onclick = () => optPanel.classList.remove('open');
+const optBtn = document.getElementById('optBtn');
+function setOptions(open) { optPanel.classList.toggle('open', open); optBtn.setAttribute('aria-expanded', open); if (open) setHelp(false); }
+optBtn.onclick = () => setOptions(!optPanel.classList.contains('open'));
+document.getElementById('closeOpt').onclick = () => { setOptions(false); optBtn.focus(); };
 document.querySelectorAll('#options .seg').forEach(seg => {
   const key = seg.dataset.opt;
   seg.innerHTML = Object.entries(OPTIONS[key]).map(([v, label]) => `<button data-v="${v}">${label}</button>`).join('');
@@ -436,9 +772,9 @@ function applyOptions(changed) {
   document.querySelectorAll('#options .seg').forEach(seg => seg.querySelectorAll('[data-v]').forEach(b => b.classList.toggle('on', opt[seg.dataset.opt] === b.dataset.v)));
   document.getElementById('styleHint').textContent = st.hint;
   try { localStorage.setItem('portal-appearance', JSON.stringify(opt)); } catch (e) {}
-  renderLegend(); renderList(); refresh(); sizeGraph();
-  if (changed === 'depth') { Graph.numDimensions(opt.depth === 'd2' ? 2 : 3); setTimeout(() => Graph.zoomToFit(900, 60), 1600); }
-  if (changed === 'layout') setTimeout(() => Graph.zoomToFit(600, 60), 300);
+  renderList(); refresh(); sizeGraph(); measureHeader();
+  if (changed === 'depth') { Graph.numDimensions(opt.depth === 'd2' ? 2 : 3); setTimeout(() => fitView(900), 1600); }
+  if (changed === 'layout') setTimeout(() => fitView(600), 300);
 }
 
 // ---------- search ----------
@@ -452,7 +788,7 @@ function search(text) {
   results.innerHTML = hits.length ? hits.map((n, i) => `<button data-i="${i}" class="${i === 0 ? 'active' : ''}">${n.title}<span class="kind">${n.kind === 'page' ? SECTIONS[n.section].title : n.kind}</span></button>`).join('') : '<div class="meta" style="padding:10px 12px">No matches</div>';
   results.style.display = 'block';
 }
-function choose(n) { results.style.display = 'none'; q.value = ''; q.blur(); if (n.kind === 'page') openPage(n.id); else { setView('graph'); focusOn(n); } }
+function choose(n) { results.style.display = 'none'; q.value = ''; q.blur(); if (n.kind === 'page') openPage(n.id); else { setView('graph'); pinNode(n); } }
 q.addEventListener('input', () => search(q.value));
 q.addEventListener('keydown', e => {
   if (!hits.length) return;
@@ -464,14 +800,392 @@ q.addEventListener('keydown', e => {
 results.addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) choose(hits[Number(b.dataset.i)]); });
 document.addEventListener('click', e => { if (!e.target.closest('.search')) results.style.display = 'none'; });
 
+// ---------- graph overlays: labels, rings, keyboard, hint ----------
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+// ---------- the peek card: content ----------
+// Everything on the card comes from the data already on the page: titles, summaries, dates, tags and the
+// links between pages. Nothing is written or guessed here.
+const endOf = e => typeof e === 'object' ? e : byId[e];
+const byNewest = (a, b) => (b.date || '').localeCompare(a.date || '') || a.title.localeCompare(b.title);
+const relCache = new Map();
+function relations(page) {
+  // Direct references (this page links to / is linked from) and pages that only share tags with it.
+  if (relCache.has(page.id)) return relCache.get(page.id);
+  const to = [], from = [], tagsWith = new Map();
+  page.edges.forEach(l => { if (l.type !== 'ref') return; const a = endOf(l.source), b = endOf(l.target); (a === page ? to : from).push(a === page ? b : a); });
+  page.neighbors.forEach(t => { if (t.kind === 'tag') t.neighbors.forEach(o => { if (o.kind === 'page' && o !== page) tagsWith.set(o, [...(tagsWith.get(o) || []), t.title]); }); });
+  const direct = new Set([...to, ...from]);
+  const r = { to, from, tagsWith, direct, sharedOnly: [...tagsWith].filter(([o]) => !direct.has(o)) };
+  relCache.set(page.id, r); return r;
+}
+function peekHtml(n, pinned) {
+  // pinned = the interactive version (rows are buttons that open the page); otherwise the read-only hover version.
+  // compact = a smaller window: fewer rows, one line of summary, no topics line, so the card covers less of the graph.
+  const compact = innerWidth < 1100 || innerHeight < 700;
+  const K = pinned ? (compact ? 4 : 6) : (compact ? 2 : 3);   // rows shown per group before "+N more"
+  const li = (page, title, o = {}) => {
+    const inner = `<span class="t">${esc(title)}</span>${o.date ? `<span class="d">${esc(o.date)}</span>` : ''}${o.note ? `<span class="n">${esc(o.note)}</span>` : ''}${o.sub ? `<span class="s">${esc(o.sub)}</span>` : ''}`;
+    return pinned && page ? `<li><button class="pk-row" data-open="${esc(page.id)}">${inner}</button></li>` : `<li>${inner}</li>`;
+  };
+  const group = (label, rows, max = K) => rows.length ? `<h5>${label}</h5><ul>${rows.slice(0, max).join('')}${rows.length > max ? `<li class="more">+${rows.length - max} more</li>` : ''}</ul>` : '';
+  const topics = tags => compact || !tags.length ? '' : `<div class="pk-topics">${esc(tags.slice(0, 6).join(' '))}${tags.length > 6 ? ` +${tags.length - 6}` : ''}</div>`;
+  const pagesOf = [...n.neighbors].filter(x => x.kind === 'page').sort(byNewest);
+  let title = n.title, meta = '', body = '', go = '';
+  if (n.kind === 'section') {
+    const latest = pagesOf.map(p => p.date).filter(Boolean).sort().pop();
+    const tally = {}; pagesOf.forEach(p => (p.tags || []).forEach(t => tally[t] = (tally[t] || 0) + 1));
+    meta = plural(pagesOf.length, 'page') + (latest ? ' · latest ' + fmtDate(latest) : '');
+    body = pagesOf.length ? group('Pages', pagesOf.map(p => li(p, p.title, { date: p.date ? fmtDate(p.date) : '', sub: p.summary })), pinned ? 8 : (compact ? 3 : 4))
+                            + topics(Object.keys(tally).sort((a, b) => tally[b] - tally[a]).map(t => '#' + t))
+                          : '<div class="pk-s pk-empty">Nothing published here yet.</div>';
+    go = pinned ? '' : 'Click to see its pages';
+  } else if (n.kind === 'page') {
+    const r = relations(n);
+    const also = o => r.tagsWith.has(o) ? 'also shares ' + r.tagsWith.get(o).join(' ') : '';
+    meta = SECTIONS[n.section].title + (n.date ? ' · ' + fmtDate(n.date) : '');
+    body = (n.summary ? `<div class="pk-s">${esc(n.summary)}</div>` : '') + topics((n.tags || []).map(t => '#' + t))
+         + (pinned ? `<button class="pk-open" data-open="${esc(n.id)}">Open page</button>` : '')
+         + group('Links to', r.to.map(o => li(o, o.title, { note: also(o) })))
+         + group('Linked from', r.from.map(o => li(o, o.title, { note: also(o) })))
+         + group('Shares tags with', r.sharedOnly.map(([o, ts]) => li(o, o.title, { note: ts.join(' ') })));
+    go = pinned ? '' : 'Click to open';
+  } else if (n.kind === 'tag') {
+    meta = 'Tag · ' + plural(pagesOf.length, 'page');
+    body = pagesOf.length ? group('Used on', pagesOf.map(p => li(p, p.title, { date: SECTIONS[p.section].title })), pinned ? 8 : (compact ? 3 : 4)) : '<div class="pk-s pk-empty">No pages use this tag yet.</div>';
+    go = pinned ? '' : 'Click to see its pages';
+  } else { title = 'Home'; meta = n.title + ' · the centre of the graph'; go = 'Click to see everything'; }
+  const close = pinned ? '<button class="pk-close" aria-label="Close">×</button>' : '';
+  const hint = pinned && !compact ? '<div class="pk-hint">Esc or click the background to close</div>' : '';
+  return `<div class="pk-t">${esc(title)}</div><div class="pk-m">${esc(meta)}</div>${body}${go ? `<div class="pk-go">${go}</div>` : ''}${hint}${close}`;   // close last, so Tab goes through the pages first
+}
+// Keyboard Enter and a mouse click both land here (touch differs for pages: see handleClick).
+function activateNode(n, viaKeyboard) { if (n.kind === 'home') goHome(); else if (n.kind === 'page') openPage(n.id); else pinNode(n, viaKeyboard); }
+
+const overlay = document.getElementById('overlay'), graphEl = document.getElementById('graph');
+const peekEl = document.getElementById('peek'), srEl = document.getElementById('sr');
+const sectionNodes = nodes.filter(n => n.kind === 'section');
+const makeEl = cls => { const d = document.createElement('div'); d.className = cls; overlay.appendChild(d); return d; };
+// The five sections, plus the centre bubble, which is the Home button.
+const labels = [...nodes.filter(n => n.kind === 'home'), ...sectionNodes].map(n => { const el = makeEl('nlabel'); el.textContent = n.kind === 'home' ? 'Home' : n.title; return { n, el, spot: 0 }; });
+// Rings: home (always on, quiet), hover (thin), selected (solid, stays), keyboard focus (dashed). Home's own ring is
+// a soft halo hugging the bubble; the other three sit just outside it, so all four stay distinguishable on Home.
+const rings = { home: makeEl('ring homering'), hover: makeEl('ring hover'), selected: makeEl('ring selected'), focus: makeEl('ring focus') };
+let pulseTimer = null;
+function pulseHome() {
+  const el = rings.home; el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse');
+  clearTimeout(pulseTimer); pulseTimer = setTimeout(() => el.classList.remove('pulse'), 900);
+}
+
+function project(n, cam, rect, h) {
+  // Where a bubble is on screen (centre x, y) and how big it looks (radius r, in pixels).
+  if (n.x === undefined) return null;
+  const p = Graph.graph2ScreenCoords(n.x, n.y, n.z);
+  const dist = Math.hypot(n.x - cam.position.x, n.y - cam.position.y, n.z - cam.position.z) || 1;
+  const r = Math.cbrt(n.val || 1) * 4 * (h / 2) / (dist * Math.tan(cam.fov * Math.PI / 360));
+  return { x: rect.left + p.x, y: rect.top + p.y, r, dist };
+}
+function placeRing(el, n, extra, cam, rect, h) {
+  const p = n && project(n, cam, rect, h);
+  if (!p) { el.style.display = 'none'; return null; }
+  if (n.kind === 'home' && el !== rings.home) extra += 8;   // keep clear of Home's own ring
+  const d = 2 * p.r + extra;
+  el.style.display = 'block'; el.style.width = el.style.height = d + 'px';
+  el.style.transform = `translate(${p.x - d / 2}px, ${p.y - d / 2}px)`;
+  return p;
+}
+
+// ---------- hit-testing ----------
+// The library works out what is under the pointer one frame late, so a quick click, or a click while the graph is
+// still moving, could land on the background. We test against where the bubbles are on screen at the moment of the click.
+// Order of preference: 1. a bubble you can actually see under the pointer (the nearest to the camera wins, Home included);
+// 2. Home's ring and its name, so Home stays reachable even when something is in front of it; 3. a small bubble within a
+// minimum target size; 4. the closest bubble within a small tolerance.
+function hitTest(x, y, touch) {
+  const cam = Graph.camera(), rect = graphEl.getBoundingClientRect(), h = Graph.height();
+  const cands = [];
+  for (const n of nodes) {
+    const p = project(n, cam, rect, h); if (!p) continue;
+    cands.push({ n, d: Math.hypot(x - p.x, y - p.y), r: p.r, dist: p.dist });
+  }
+  const nearest = list => list.reduce((a, c) => c.dist < a.dist ? c : a).n;
+  const seen = cands.filter(c => c.d <= c.r);
+  if (seen.length) return nearest(seen);
+  const hc = cands.find(c => c.n.kind === 'home');
+  const hl = labels[0] && labels[0].el, lb = hl && !hl.classList.contains('off') ? hl.getBoundingClientRect() : null;
+  if (hc && (hc.d <= hc.r + (touch ? 16 : 10) || (lb && x >= lb.left - 4 && x <= lb.right + 4 && y >= lb.top - 4 && y <= lb.bottom + 4))) return hc.n;
+  const floor = touch ? 13 : 6, small = cands.filter(c => c.d <= Math.max(c.r, floor));
+  if (small.length) return nearest(small);
+  let best = null;
+  for (const c of cands) {
+    const slop = touch ? 10 : 3;
+    if (c.d > Math.max(c.r, floor) + slop) continue;
+    const score = c.d - Math.max(c.r, floor);
+    if (!best || score < best.score) best = { n: c.n, score };
+  }
+  return best && best.n;
+}
+const ptr = { x: 0, y: 0, type: 'mouse', inside: false, down: null, count: 0 };
+const dragLimit = type => type === 'touch' ? 10 : 6;
+graphEl.addEventListener('pointerdown', e => {
+  ptr.count++; ptr.x = e.clientX; ptr.y = e.clientY; ptr.type = e.pointerType;
+  if (ptr.count === 1) ptr.down = { x: e.clientX, y: e.clientY, t: performance.now(), moved: false, multi: false };
+  else if (ptr.down) ptr.down.multi = true;   // a second finger: that is a pinch, not a tap
+}, true);
+graphEl.addEventListener('pointermove', e => {
+  ptr.x = e.clientX; ptr.y = e.clientY; ptr.type = e.pointerType; ptr.inside = true;
+  if (ptr.down && Math.hypot(e.clientX - ptr.down.x, e.clientY - ptr.down.y) > dragLimit(e.pointerType)) ptr.down.moved = true;
+}, true);
+graphEl.addEventListener('pointerup', e => {
+  const d = ptr.down; ptr.count = Math.max(0, ptr.count - 1); if (ptr.count === 0) ptr.down = null;
+  if (!d || d.multi || d.moved || performance.now() - d.t > 700) return;   // a drag, a pinch or a long press: not a click
+  handleClick(e.clientX, e.clientY, e.pointerType);
+}, true);
+graphEl.addEventListener('pointercancel', () => { ptr.count = 0; ptr.down = null; }, true);
+graphEl.addEventListener('pointerleave', () => { ptr.inside = false; });
+function handleClick(x, y, type) {
+  const n = hitTest(x, y, type === 'touch');
+  if (!n) { if (!document.body.classList.contains('reading')) setHighlight(null); return; }   // the background lets go of a selection or card, but not of the page that is open
+  if (n.kind === 'page' && type === 'touch') pinNode(n);          // touch: the first tap inspects; the card has an "Open page" button
+  else activateNode(n);                                           // mouse: sections and tags pin a card, pages open at once, Home goes home
+}
+
+// ---------- the card: pinning ----------
+function pinNode(n, fromKeyboard) {
+  if (!n || n.kind === 'home') return;
+  if (document.body.classList.contains('reading')) {   // a section or tag clicked while a page is open: close the page, then show the card
+    panel.classList.remove('open'); document.body.classList.remove('reading');
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    const back = readStart; readStart = null; fitView(600, back);
+  }
+  setHighlight(n);                                    // lights its connections and gives it the "selected" ring
+  pinnedNode = n; rowNode = null;
+  clearTimeout(peekIn); peekInFor = null; clearTimeout(peekOut); peekOut = null;
+  showPeek(n);
+  liftAboveSheet(n);
+  if (fromKeyboard) { const b = peekEl.querySelector('button.pk-row, button.pk-open'); if (b) b.focus({ preventScroll: true }); }
+}
+function liftAboveSheet(n) {
+  // On a narrow screen the pinned card is a sheet over the bottom ~46%. If the selected bubble would be under it, pan the
+  // graph up (no zoom, no turn) so the bubble stays visible above the sheet.
+  if (innerWidth > 720 || document.body.classList.contains('listmode')) return;
+  const cam = Graph.camera(), ctl = Graph.controls(), rect = graphEl.getBoundingClientRect(), h = Graph.height();
+  const p = project(n, cam, rect, h); if (!p || p.y + p.r < innerHeight * 0.5 - 20) return;
+  const dy = p.y - innerHeight * 0.28, from = camPose();
+  const perPx = 2 * cam.position.distanceTo(ctl.target) * Math.tan(cam.fov * Math.PI / 360) / h;
+  const up = cam.position.clone().setFromMatrixColumn(cam.matrixWorld, 1), sh = up.multiplyScalar(-dy * perPx);
+  glide({ pos: from.pos.clone().add(sh), look: from.look.clone().add(sh) }, from, 450);
+}
+function resetPinnedCard() {
+  pinnedNode = null; rowNode = null; peekNode = null;
+  peekEl.classList.remove('on', 'pinned'); peekEl.setAttribute('aria-hidden', 'true'); peekEl.removeAttribute('role'); peekEl.removeAttribute('aria-label');
+}
+function unpin() { if (!pinnedNode) return; resetPinnedCard(); setHighlight(null); }
+peekEl.addEventListener('click', e => {
+  if (e.target.closest('.pk-close')) { const inCard = peekEl.contains(document.activeElement); unpin(); if (inCard) graphEl.focus({ preventScroll: true }); return; }
+  const t = e.target.closest('[data-open]'); if (t) openPage(t.dataset.open);
+});
+const setRow = e => { const r = e.target.closest && e.target.closest('[data-open]'); const n = r ? byId[r.dataset.open] : null; if (n !== rowNode) { rowNode = n; refresh(); } };
+peekEl.addEventListener('mouseover', setRow); peekEl.addEventListener('focusin', setRow);
+peekEl.addEventListener('mouseleave', () => { if (rowNode) { rowNode = null; refresh(); } });
+peekEl.addEventListener('focusout', e => { if (!peekEl.contains(e.relatedTarget) && rowNode) { rowNode = null; refresh(); } });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || !pinnedNode) return;
+  const inCard = peekEl.contains(document.activeElement); unpin();
+  if (inCard) graphEl.focus({ preventScroll: true });
+});
+
+// ---------- the card: showing and placing ----------
+// The card follows whichever bubble the mouse or keyboard is on. It waits a moment before first appearing, swaps
+// straight to the next bubble, and lingers briefly on leaving, so it does not flicker as the pointer moves around.
+// A pinned card stays put until it is dismissed.
+let peekNode = null, peekIn = null, peekInFor = null, peekOut = null, peekSide = 'right', peekGoneAt = -1e9, peekPos = null, peekPosFor = null, camMoving = false, lastCam = null;
+function peekTarget() { return document.body.classList.contains('reading') ? null : pinnedNode || (document.body.classList.contains('settling') ? null : hv()); }
+function showPeek(n) {
+  peekNode = n;
+  if (!n) { peekEl.classList.remove('on'); peekGoneAt = performance.now(); return; }
+  const pinned = n === pinnedNode;
+  peekEl.innerHTML = peekHtml(n, pinned); peekEl.classList.toggle('pinned', pinned); peekEl.classList.add('on');
+  peekEl.classList.toggle('compact', innerWidth < 1100 || innerHeight < 700); peekEl.classList.toggle('sheet', pinned && innerWidth <= 720);   // narrow screens: a bottom sheet, not a floating card
+  peekPosFor = null;   // a new card appears where it belongs; smoothing only applies while the same card moves
+  if (pinned) { peekEl.setAttribute('role', 'dialog'); peekEl.setAttribute('aria-label', n.title + ' details'); peekEl.removeAttribute('aria-hidden'); }
+  else { peekEl.removeAttribute('role'); peekEl.removeAttribute('aria-label'); peekEl.setAttribute('aria-hidden', 'true'); }
+  if (n === kbNode && !pinned) srEl.textContent = peekEl.textContent.replace(/\s+/g, ' ').trim();   // announced to screen readers on keyboard focus only
+}
+function syncPeek() {
+  const t = peekTarget();
+  if (t === peekNode) { clearTimeout(peekOut); peekOut = null; clearTimeout(peekIn); peekInFor = null; return; }
+  if (!t && document.body.classList.contains('reading') && peekNode) { clearTimeout(peekOut); peekOut = null; showPeek(null); return; }   // a page is opening: no lingering
+  if (!t) { clearTimeout(peekIn); peekInFor = null; if (!peekOut) peekOut = setTimeout(() => { peekOut = null; if (!peekTarget()) showPeek(null); }, 420); return; }
+  clearTimeout(peekOut); peekOut = null;
+  // Card already up, or only just gone: go straight to the next bubble, with no waiting.
+  if (peekNode || t === pinnedNode || performance.now() - peekGoneAt < 500 || (t === kbNode && !hoverNode)) { clearTimeout(peekIn); peekInFor = null; showPeek(t); return; }
+  if (peekInFor !== t) { clearTimeout(peekIn); peekInFor = t; peekIn = setTimeout(() => { peekInFor = null; if (peekTarget() === t) showPeek(t); }, 130); }
+}
+function placePeek(all, nameBoxes) {
+  // Try twelve spots around the bubble and take the one that covers the least: never its own bubble, as little as
+  // possible of the other bubbles (the lit ones count most, since they are what you may want to click), the section
+  // names, the header and the corner panels; always inside the window. It keeps its side unless another is clearly better.
+  if (!peekNode) return;
+  if (peekEl.classList.contains('sheet')) return;   // a bottom sheet is placed by CSS, not by the graph
+  const me = all.find(c => c.n === peekNode); if (!me) return;
+  const p = me.p, w = peekEl.offsetWidth, ph = peekEl.offsetHeight, M = 10, top = 64, bot = innerHeight - 10, gap = p.r + 14;   // the header's own boxes are avoided one by one (see uiRects), so the empty parts of the header band stay usable
+  const pinned = peekNode === pinnedNode;
+  const avoid = uiRects();
+  const hitsCircle = (b, c, pad) => { const cx = Math.max(b.l, Math.min(c.x, b.r)), cy = Math.max(b.t, Math.min(c.y, b.b)); return Math.hypot(c.x - cx, c.y - cy) < c.r + pad; };
+  const spots = [];
+  [0, 34, 80].forEach(extra => [0.5, 0.15, 0.85].forEach(f => {   // three distances x three alignments x four sides; farther spots cost a little, so it only goes there to avoid something
+    const g = gap + extra;
+    spots.push(['right', p.x + g, p.y - ph * f, extra], ['left', p.x - g - w, p.y - ph * f, extra]);
+    spots.push(['below', p.x - w * f, p.y + g, extra], ['above', p.x - w * f, p.y - g - ph, extra]);
+  }));
+  let best = null;
+  spots.forEach(([side, x0, y0, extra]) => {
+    // Judge each spot where the card would really end up: pushed back inside the window if it hangs over an edge.
+    const x = Math.min(Math.max(x0, M), Math.max(M, innerWidth - w - M)), y = Math.min(Math.max(y0, top), Math.max(top, bot - ph));
+    const b = { l: x, r: x + w, t: y, b: y + ph };
+    let cost = extra * 0.15 + 0.4 * (Math.abs(x - x0) + Math.abs(y - y0));   // a little for being far from the bubble or pushed around
+    if (hitsCircle(b, p, 8)) cost += 5000;   // never on its own bubble
+    all.forEach(c => { if (c !== me && hitsCircle(b, c.p, 3)) cost += hiNodes.has(c.n) ? 15 : (c.n.kind === 'home' || c.n.kind === 'section') ? 12 : c.n.kind === 'page' ? 5 : 1.5; });
+    nameBoxes.forEach(nb => { if (b.l < nb.r && b.r > nb.l && b.t < nb.b && b.b > nb.t) cost += nb.n === peekNode ? 40 : 10; });   // the selected bubble's own name matters most
+    avoid.forEach(r => { if (b.l < r.right && b.r > r.left && b.t < r.bottom && b.b > r.top) cost += 60; });
+    if (side === peekSide) cost -= camMoving ? 60 : pinned ? 10 : 4;   // stability: no flipping between near-equal spots, and none at all while the camera moves
+    if (!best || cost < best.cost) best = { side, x, y, cost };
+  });
+  peekSide = best.side;
+  let x = best.x, y = best.y;
+  if (peekPosFor === peekNode && peekPos) { x = peekPos.x + (x - peekPos.x) * 0.4; y = peekPos.y + (y - peekPos.y) * 0.4; if (Math.abs(x - best.x) < 0.4 && Math.abs(y - best.y) < 0.4) { x = best.x; y = best.y; } }   // glide, do not jump, while the bubble moves
+  peekPos = { x, y }; peekPosFor = peekNode;
+  peekEl.style.transform = `translate(${x}px, ${y}px)`;
+}
+function drawOverlays() {
+  requestAnimationFrame(drawOverlays);
+  if (document.body.classList.contains('listmode')) return;
+  const cam = Graph.camera(), rect = graphEl.getBoundingClientRect(), h = Graph.height();
+  camMoving = !!lastCam && cam.position.distanceTo(lastCam) > 0.03; lastCam = cam.position.clone();
+  // Hover follows the mouse even when the graph moves under a still pointer (settling, rotating, zooming).
+  if (ptr.inside && ptr.type !== 'touch' && !ptr.down) {
+    const n = hitTest(ptr.x, ptr.y, false);
+    if (n !== hoverNode) { hoverNode = n; document.body.style.cursor = n ? 'pointer' : ''; refresh(); }
+  } else if (hoverNode && (ptr.down || !ptr.inside)) { hoverNode = null; document.body.style.cursor = ''; refresh(); }
+  // Bubble names: nearest first. Each goes below its bubble if that is clear, else above, right or left;
+  // it never sits on another bubble or another name (the one with least overlap wins if no spot is fully clear).
+  const all = nodes.map(n => ({ n, p: project(n, cam, rect, h) })).filter(a => a.p);
+  const items = labels.map(l => ({ ...l, ref: l, p: project(l.n, cam, rect, h), w: l.el.offsetWidth })).filter(i => i.p).sort((a, b) => a.p.dist - b.p.dist);
+  const placed = [], H = 16, gap = 5;
+  const hitsBubble = (b, c) => { const cx = Math.max(b.l, Math.min(c.p.x, b.r)), cy = Math.max(b.t, Math.min(c.p.y, b.b)); return Math.hypot(c.p.x - cx, c.p.y - cy) < c.p.r + 2; };
+  labels.forEach(l => l.el.classList.add('off'));
+  items.forEach(i => {
+    const { x, y, r } = i.p, w = i.w;
+    const spots = [[x - w / 2, y + r + gap], [x - w / 2, y - r - gap - H], [x + r + gap + 2, y - H / 2], [x - r - gap - 2 - w, y - H / 2]];
+    let best = null;
+    // Try the spot used last frame first and keep it if it is still clear, so names do not flip while bubbles move.
+    const order = [i.spot, ...[0, 1, 2, 3].filter(k => k !== i.spot)];
+    order.forEach(k => { let [l, t] = spots[k];
+      l = Math.min(Math.max(l, rect.left + 6), rect.right - w - 6); t = Math.min(Math.max(t, rect.top + 6), rect.bottom - H - 6);
+      const box = { l: l - 3, r: l + w + 3, t: t - 2, b: t + H + 2 };
+      const score = all.filter(c => c.n !== i.n && hitsBubble(box, c)).length + 3 * placed.filter(o => box.l < o.r && box.r > o.l && box.t < o.b && box.b > o.t).length;
+      if (!best || score < best.score) best = { l, t, box, score, k };
+    });
+    i.spot = i.ref.spot = best.k;
+    placed.push({ ...best.box, n: i.n });
+    i.el.style.transform = `translate(${best.l}px, ${best.t}px)`;
+    i.el.classList.remove('off');
+    i.el.classList.toggle('faded', !isLit(i.n));
+  });
+  // Rings.
+  placeRing(rings.home, document.body.classList.contains('settling') ? null : home, 10, cam, rect, h);
+  placeRing(rings.hover, hoverNode || rowNode, 9, cam, rect, h);
+  placeRing(rings.selected, selectedNode, 13, cam, rect, h);
+  placeRing(rings.focus, kbNode, 17, cam, rect, h);
+  syncPeek(); placePeek(all, placed);
+}
+
+// Keyboard: Tab to the graph, then arrows move between bubbles, Enter opens, Esc leaves.
+const kbOrder = [...nodes.filter(n => n.kind === 'home'), ...sectionNodes, ...pageNodes, ...nodes.filter(n => n.kind === 'tag')];
+let kbIndex = -1;
+function kbSet(i) {
+  kbIndex = i; kbNode = i < 0 ? null : kbOrder[i];
+  if (!kbNode) { srEl.textContent = ''; if (peekNode && !pinnedNode && !hoverNode) { clearTimeout(peekOut); peekOut = null; showPeek(null); } }   // leaving by keyboard: no gap to cross, so no lingering
+  refresh();
+  // If the focused bubble is off screen (the visitor has zoomed in), pull the view back so they can see it.
+  const p = kbNode && project(kbNode, Graph.camera(), graphEl.getBoundingClientRect(), Graph.height());
+  if (p && (p.x < 0 || p.y < headerBottom() - 20 || p.x > innerWidth || p.y > innerHeight)) fitView(600);
+}
+graphEl.tabIndex = 0;
+graphEl.setAttribute('role', 'application');
+graphEl.setAttribute('aria-label', 'Knowledge graph. Use the arrow keys to move between bubbles, Enter to open one, Escape to leave.');
+graphEl.addEventListener('focus', () => { if (graphEl.matches(':focus-visible')) kbSet(kbIndex < 0 ? 0 : kbIndex); });
+graphEl.addEventListener('blur', () => kbSet(-1));
+graphEl.addEventListener('keydown', e => {
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+  if (step) { e.preventDefault(); kbSet(kbIndex < 0 ? 0 : (kbIndex + step + kbOrder.length) % kbOrder.length); }
+  else if (e.key === 'Home') { e.preventDefault(); kbSet(0); }
+  else if (e.key === 'End') { e.preventDefault(); kbSet(kbOrder.length - 1); }
+  else if ((e.key === 'Enter' || e.key === ' ') && kbNode) { e.preventDefault(); activateNode(kbNode, true); }
+  else if (e.key === 'Escape' && !pinnedNode) graphEl.blur();   // with a card pinned, Escape closes the card first
+});
+
+// ---------- help, header height, Escape ----------
+const helpBtn = document.getElementById('helpBtn'), helpEl = document.getElementById('help');
+function setHelp(open) {
+  helpEl.hidden = !open; helpBtn.setAttribute('aria-expanded', open);
+  if (open) { setOptions(false); document.getElementById('helpX').focus({ preventScroll: true }); }
+}
+helpBtn.addEventListener('click', () => setHelp(helpEl.hidden));
+['helpX', 'helpDone'].forEach(id => document.getElementById(id).addEventListener('click', () => { setHelp(false); helpBtn.focus(); }));
+document.addEventListener('click', e => { if (!helpEl.hidden && !helpEl.contains(e.target) && !helpBtn.contains(e.target)) setHelp(false); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || e.target === q) return;   // Escape inside the search box only closes its results
+  if (!helpEl.hidden) { setHelp(false); helpBtn.focus(); }
+  else if (optPanel.classList.contains('open')) { setOptions(false); optBtn.focus(); }
+  else if (!pinnedNode && panel.classList.contains('open')) closePanel();   // an open page closes too (a pinned card closes first)
+});
+function syncPlaceholder() { q.placeholder = innerWidth <= 720 ? 'Search' : 'Search pages and tags'; }
+syncPlaceholder();
+// The header's real height is shared with the list, the Appearance panel and the help card (and the camera keeps clear of it).
+function measureHeader() { document.documentElement.style.setProperty('--hh', headerBottom() + 'px'); }
+if (window.ResizeObserver) new ResizeObserver(measureHeader).observe(document.getElementById('top'));
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(measureHeader);
+measureHeader();
+requestAnimationFrame(drawOverlays);
+
 // ---------- start ----------
 // A shared link like #/read/projects/job-copilot opens that page.
 function fromHash() {
-  const h = location.hash;
-  if (h.startsWith('#/read/')) openPage(decodeURIComponent(h.slice(7)), true);
+  const h = location.hash; let id = null;
+  if (h.startsWith('#/read/')) { try { id = decodeURIComponent(h.slice(7)); } catch (e) {} }
+  if (id && byId[id] && byId[id].kind === 'page') openPage(id, true);
+  else if (panel.classList.contains('open')) closePanel({ keepAddress: true });   // an address with no page in it (Back, Forward or an unknown page): close the page and its selection
 }
 window.addEventListener('hashchange', fromHash);
-window.addEventListener('resize', sizeGraph);
+let resizeTimer;
+window.addEventListener('resize', () => {   // a resized window gets a fresh framing, unless a page is open
+  sizeGraph(); syncLatest(); syncPlaceholder(); measureHeader(); clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { if (!panel.classList.contains('open') && !document.body.classList.contains('listmode')) fitView(400); }, 250);
+});
+// First paint: the layout already exists (warmup), so frame it and show it. No visible jump.
+function firstFit(tries) {
+  if (nodes[0].x === undefined && tries < 60) return setTimeout(() => firstFit(tries + 1), 25);
+  if (panel.classList.contains('open')) return revealGraph();
+  fitView(0);                                        // 1. frame the finished layout (worked out in warmup)
+  const cam = Graph.camera(), ctl = Graph.controls();
+  homeDir = cam.position.clone().sub(ctl.target).normalize(); homeUp = cam.up.clone();   // what Home restores
+  const pose = { pos: cam.position.clone(), look: ctl.target.clone() };
+  if (!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+    // 2. Rewind and replay the same physics where the visitor can see it: the bubbles start bunched at the
+    //    centre and settle into the layout we just framed. The camera does not move, so there is no jump.
+    document.body.classList.add('settling');
+    nodes.forEach(n => { delete n.x; delete n.y; delete n.z; delete n.vx; delete n.vy; delete n.vz; });
+    if (home) { home.fx = 0; home.fy = 0; home.fz = 0; }
+    Graph.warmupTicks(0).cooldownTicks(120).graphData({ nodes, links });
+    place(pose.pos, pose.look);
+    setTimeout(endSettling, 5000);   // safety net
+  }
+  revealGraph();
+}
+setTimeout(() => firstFit(0), 0);
+setTimeout(revealGraph, 1500);   // safety net: never leave the page blank
 if (opt.depth === 'd2') Graph.numDimensions(2);
 applyOptions();
 if (window.innerWidth < 720) setView('list');
