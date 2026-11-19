@@ -175,6 +175,7 @@
   .nlabel { position: absolute; left: 0; top: 0; white-space: nowrap; font: 600 13px/1 var(--ui); letter-spacing: .02em;
     color: var(--ink); opacity: .92; transition: opacity .25s ease; will-change: transform;
     text-shadow: 0 0 2px var(--bg), 0 0 3px var(--bg), 0 0 6px var(--bg), 0 0 10px var(--bg); }
+  .nlabel.pagelabel { font-weight: 500; font-size: 12px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
   .nlabel.faded { opacity: .62; }
   body.settling .nlabel { opacity: 0 !important; }
   .nlabel.off { opacity: 0; }
@@ -897,7 +898,9 @@ const peekEl = document.getElementById('peek'), srEl = document.getElementById('
 const sectionNodes = nodes.filter(n => n.kind === 'section');
 const makeEl = cls => { const d = document.createElement('div'); d.className = cls; overlay.appendChild(d); return d; };
 // The five sections, plus the centre bubble, which is the Home button.
-const labels = [...nodes.filter(n => n.kind === 'home'), ...sectionNodes].map(n => { const el = makeEl('nlabel'); el.textContent = n.kind === 'home' ? 'Home' : n.title; return { n, el, spot: 0 }; });
+// Page names are made too, but only shown for the pages of a section that has been clicked.
+const labels = [...nodes.filter(n => n.kind === 'home'), ...sectionNodes, ...nodes.filter(n => n.kind === 'page')].map(n => { const el = makeEl(n.kind === 'page' ? 'nlabel pagelabel' : 'nlabel'); el.textContent = n.kind === 'home' ? 'Home' : n.title; return { n, el, spot: 0 }; });
+const showsLabel = n => n.kind !== 'page' || (!!selectedNode && selectedNode.kind === 'section' && hiNodes.has(n));
 // Rings: home (always on, quiet), hover (thin), selected (solid, stays), keyboard focus (dashed). Home's own ring is
 // a soft halo hugging the bubble; the other three sit just outside it, so all four stay distinguishable on Home.
 const rings = { home: makeEl('ring homering'), hover: makeEl('ring hover'), selected: makeEl('ring selected'), focus: makeEl('ring focus') };
@@ -1101,7 +1104,7 @@ function drawOverlays() {
   // Bubble names: nearest first. Each goes below its bubble if that is clear, else above, right or left;
   // it never sits on another bubble or another name (the one with least overlap wins if no spot is fully clear).
   const all = nodes.map(n => ({ n, p: project(n, cam, rect, h) })).filter(a => a.p);
-  const items = labels.map(l => ({ ...l, ref: l, p: project(l.n, cam, rect, h), w: l.el.offsetWidth })).filter(i => i.p).sort((a, b) => a.p.dist - b.p.dist);
+  const items = labels.map(l => ({ ...l, ref: l, p: project(l.n, cam, rect, h), w: l.el.offsetWidth })).filter(i => i.p && showsLabel(i.n)).sort((a, b) => (a.n.kind === 'page') - (b.n.kind === 'page') || a.p.dist - b.p.dist);
   const placed = [], H = 16, gap = 5;
   const hitsBubble = (b, c) => { const cx = Math.max(b.l, Math.min(c.p.x, b.r)), cy = Math.max(b.t, Math.min(c.p.y, b.b)); return Math.hypot(c.p.x - cx, c.p.y - cy) < c.p.r + 2; };
   labels.forEach(l => l.el.classList.add('off'));
