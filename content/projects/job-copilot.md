@@ -1,7 +1,7 @@
 ---
 title: Job Search Copilot
 section: projects
-tags: [python, llm, rag, agents]
+tags: [ai, python, llm, rag, agents]
 visibility: public
 summary: A Python tool built in 16 steps, from keyword matching to an agent.
 ---

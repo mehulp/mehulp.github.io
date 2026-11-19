@@ -11,6 +11,11 @@ import re
 import posixpath
 import argparse
 import json
+import shutil
+import textwrap
+import itertools
+from html import escape as html_escape
+from markdown.extensions.toc import slugify as _slugify
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -59,15 +64,29 @@ def is_public(page):
 
 def problems_in(page):
     """Return a list of missing required fields, e.g. ['summary']."""
-    # Checks the page kept its side of the data contract; an empty value ("" or []) counts as missing.
-    return [field for field in REQUIRED if not page.get(field)]
+    # Checks the page kept its side of the data contract; an empty value ("") counts as missing.
+    # The one exception: `tags: []` is allowed (a page may have no meaningful tag), but the tags line itself must be there.
+    return [field for field in REQUIRED if (page.get(field) is None if field == "tags" else not page.get(field))]
 
 
-def to_html(body):
-    """Turn markdown text into HTML."""
+def to_html(body, toc=False):
+    """Turn markdown text into HTML. With toc=True, give the ## headings ids and add a small "On this page" list."""
     # The markdown library does the conversion; "tables" and "fenced_code" switch on
     # tables and ``` code blocks, which are off by default.
-    return markdown.markdown(body, extensions=["tables", "fenced_code"])
+    if not toc:
+        return markdown.markdown(body, extensions=["tables", "fenced_code"])
+    # Opt-in per page (front matter: toc: true). The ids start with "sec-" so they can never clash with an id the site
+    # already uses (list, help, panel...). The links carry data-anchor, not just #id: a plain #id link would change the
+    # address, and the site reads the address to decide which page is open. The site's script scrolls to the heading.
+    md = markdown.Markdown(extensions=["tables", "fenced_code", "toc"],
+                           extension_configs={"toc": {"toc_depth": "2-2", "slugify": lambda value, sep: "sec-" + _slugify(value, sep)}})
+    html = md.convert(body)
+    heads = [(t["id"], t["name"]) for t in md.toc_tokens]
+    if heads and "<h2" in html:
+        nav = ('<nav class="toc" aria-label="On this page"><span class="toc-label">On this page</span>'
+               + "".join(f'<a href="#{i}" data-anchor="{i}">{html_escape(n)}</a>' for i, n in heads) + "</nav>")
+        html = html.replace("<h2", nav + "<h2", 1)   # just before the first heading: after the introduction
+    return html
 
 SECTION_TITLES = {
     "about": "About",
@@ -198,35 +217,166 @@ def read_quotes(path):
     return quotes
 
 
-def build(content_dir, out_dir):
-    """Run the whole pipeline. Return (ids kept, ids skipped)."""
+# ---------- checks on sections and tags ----------
+
+TAG_FORM = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")   # lowercase words joined by single hyphens
+
+
+def suggest_tag(tag):
+    """The tag spelt the way the site expects: lowercase, hyphens for spaces and underscores, no stray symbols."""
+    tag = re.sub(r"[\s_]+", "-", str(tag).strip().lstrip("#").lower())
+    return re.sub(r"-+", "-", re.sub(r"[^a-z0-9-]", "", tag)).strip("-")
+
+
+def _edit_distance(a, b):
+    prev = list(range(len(b) + 1))
+    for i, x in enumerate(a, 1):
+        cur = [i]
+        for j, y in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[-1] + 1, prev[j - 1] + (x != y)))
+        prev = cur
+    return prev[-1]
+
+
+def similar_reason(a, b):
+    """Why two different tags look like one topic spelt two ways, or None. Short names (ai, llm, rag) are never compared."""
+    if a.replace("-", "") == b.replace("-", ""):
+        return "they differ only by hyphens"
+    for short, long in ((a, b), (b, a)):
+        if long in (short + "s", short + "es"):
+            return "one is the singular of the other"
+    if min(len(a), len(b)) >= 5 and _edit_distance(a, b) == 1:
+        return "they are one letter apart"
+    return None
+
+
+def validate_content(pages, built_ids):
+    """Check every page's section and tags. Return (errors, warnings), each a list of readable lines.
+
+    A page that will be built (public, or named for a preview) gets errors for real mistakes. A page that will NOT be built
+    (a draft) only gets warnings, so a draft can never stop the site from publishing. Look-alike tags, tags used once, and tags
+    named like a section are warnings for everyone: they may well be intended.
+    """
+    errors, warnings = [], []
+    used = {}   # tag -> ids of built pages using it
+    for p in pages:
+        built = p["id"] in built_ids
+        path = f"content/{p['id']}.md"
+        out, prefix = (errors, "") if built else (warnings, "(draft, not built) ")
+        problem = lambda text: out.append(f"{prefix}{path}: {text}")
+        if built:
+            missing = problems_in(p)
+            if missing:
+                extra = " (use `tags: []` if the page has no tag)" if "tags" in missing else ""
+                problem(f"missing {', '.join(missing)}{extra}. Every page needs: {', '.join(REQUIRED)}.")
+        section = p.get("section")
+        if not isinstance(section, str) or section not in SECTION_TITLES:
+            problem(f"section {section!r} is not one of: {', '.join(SECTION_TITLES)}. "
+                    f"Put the file in one of those folders under content/, or correct `section:` in the front matter.")
+        tags = p.get("tags")
+        if tags is None:
+            continue   # a missing tags line is reported above
+        if not isinstance(tags, list):
+            problem(f"tags must be a list, like  tags: [ai, llm]  (found {type(tags).__name__}: {tags!r}).")
+            continue
+        seen = []
+        for number, tag in enumerate(tags, 1):
+            if not isinstance(tag, str):
+                problem(f"tag {number} is {tag!r} (type {type(tag).__name__}), not text. YAML turns bare words such as yes, no, null "
+                        f"and 2024 into non-text. Put it in quotes (\"{tag}\") or give it a name made of letters.")
+            elif not TAG_FORM.match(tag):
+                problem(f"tag {tag!r} must be lowercase words joined by hyphens, with letters and digits only. "
+                        f"Did you mean {suggest_tag(tag)!r}?")
+            elif tag in seen:
+                problem(f"tag {tag!r} is listed more than once. Remove the repeat.")
+            else:
+                seen.append(tag)
+                if built:
+                    used.setdefault(tag, []).append(p["id"])
+    names = sorted(used)
+    for a, b in itertools.combinations(names, 2):
+        why = similar_reason(a, b)
+        if why:
+            warnings.append(f"tags {a!r} ({', '.join(used[a])}) and {b!r} ({', '.join(used[b])}) look like one topic spelt two ways: "
+                            f"{why}. If that is a mistake, use one spelling; if they are genuinely different, ignore this.")
+    same = [t for t in names if t in SECTION_TITLES]
+    if same:
+        warnings.append(f"tag{'s' if len(same) > 1 else ''} {', '.join(repr(t) for t in same)} {'share' if len(same) > 1 else 'shares'} "
+                        f"a name with a section. Pages in that section are already connected to it, so the tag adds nothing there.")
+    once = [f"{t} ({used[t][0]})" for t in names if len(used[t]) == 1]
+    if once:
+        warnings.append(textwrap.fill(f"{len(once)} tag{'s are' if len(once) > 1 else ' is'} used by only one page. That is fine for a new topic; "
+                                      f"it just connects nothing yet: " + ", ".join(once) + ".", width=110, subsequent_indent="      ", break_on_hyphens=False, break_long_words=False))
+    return errors, warnings
+
+
+def format_report(errors):
+    """One readable message for a failed build: every problem at once, numbered."""
+    lines = [f"{len(errors)} problem{'s' if len(errors) > 1 else ''} in content/ (nothing was built):"]
+    lines += [textwrap.fill(f"{i}. {e}", width=110, initial_indent="  ", subsequent_indent="     ", break_on_hyphens=False, break_long_words=False) for i, e in enumerate(errors, 1)]
+    lines.append("Fix these and run the build again.")
+    return "\n".join(lines)
+
+
+def build(content_dir, out_dir, include_drafts=(), warnings=None):
+    """Run the whole pipeline. Return (ids kept, ids skipped).
+
+    include_drafts names pages that are NOT public but should be built anyway. It is only ever used by the local preview
+    (see main); a normal build passes nothing, so drafts stay out.
+    warnings, if given, is a list that receives readable warnings (they never stop the build).
+    """
     # read -> keep public -> stop on a broken page -> graph -> HTML -> two files.
     pages = read_pages(content_dir)
-    public = [p for p in pages if is_public(p)]
-    skipped = [p["id"] for p in pages if not is_public(p)]
-    for p in public:
-        missing = problems_in(p)
-        if missing:
-            raise ValueError(f"{p['id']}: missing {', '.join(missing)}")
+    unknown = [d for d in include_drafts if d not in {p["id"] for p in pages}]
+    if unknown:
+        raise ValueError(f"no such page to preview: {', '.join(unknown)}")
+    shown = lambda p: is_public(p) or p["id"] in include_drafts
+    public = [p for p in pages if shown(p)]
+    skipped = [p["id"] for p in pages if not shown(p)]
+    errors, notes = validate_content(pages, {p["id"] for p in public})
+    if errors:
+        raise ValueError(format_report(errors))
+    if warnings is not None:
+        warnings.extend(notes)
     nodes, links = build_graph(public)
-    pages_data = {p["id"]: {"title": p["title"], "html": rewrite_links(to_html(p["body"]), p["id"])}
+    pages_data = {p["id"]: {"title": p["title"], "html": rewrite_links(to_html(p["body"], toc=bool(p.get("toc"))), p["id"])}
                   for p in public}
     write_js(out_dir / "graph-data.js", "GRAPH_DATA", {"nodes": nodes, "links": links})
     write_js(out_dir / "pages-data.js", "PAGES_DATA", pages_data)
     write_js(out_dir / "quotes-data.js", "QUOTES_DATA", read_quotes(content_dir / "quotes.yml"))
     return [p["id"] for p in public], skipped
 
+PREVIEW_DIR = ROOT / "private" / "preview"   # private/ is ignored by git; this folder is never published
+
+
 def main():
     parser = argparse.ArgumentParser(description="Build the portal's data files.")
     parser.add_argument("--content", default=str(ROOT / "content"))
-    parser.add_argument("--out", default=str(ROOT / "site"))
+    parser.add_argument("--out", default=None)
+    parser.add_argument("--preview", action="append", default=[], metavar="PAGE_ID",
+                        help="LOCAL PREVIEW ONLY: also build this draft page (e.g. about/index) into private/preview/. "
+                             "Other drafts stay out. Never use this for the published build.")
     args = parser.parse_args()
-    try:
-        kept, skipped = build(Path(args.content), Path(args.out))
-    except ValueError as err:
-        print(f"Build failed: {err}")
+    out = Path(args.out) if args.out else (PREVIEW_DIR if args.preview else ROOT / "site")
+    if args.preview and (out.resolve() == (ROOT / "site").resolve() or (ROOT / "site").resolve() in out.resolve().parents):
+        print("Refusing: a preview that includes drafts must not be written into site/, the folder that gets published.")
         return 1
-    print(f"Built {len(kept)} public pages. Skipped {len(skipped)}: {', '.join(skipped) or 'none'}.")
+    notes = []
+    try:
+        kept, skipped = build(Path(args.content), out, include_drafts=args.preview, warnings=notes)
+    except ValueError as err:
+        print(f"Build failed:\n{err}")
+        return 1
+    print(f"Built {len(kept)} {'pages' if args.preview else 'public pages'}. Skipped {len(skipped)}: {', '.join(skipped) or 'none'}.")
+    if notes:
+        print(f"\nWarnings ({len(notes)}), these do not stop the build:")
+        for note in notes:
+            print(f"  - {note}")
+        print()
+    if args.preview:
+        shutil.copy(ROOT / "site" / "index.html", out / "index.html")   # the preview uses the current page design
+        print(f"PREVIEW (includes draft: {', '.join(args.preview)}). Not for publishing.")
+        print(f"Open it with:  python3 -m http.server 8001 --directory {out}   then visit http://localhost:8001/#/read/{args.preview[0]}")
     return 0
 
 

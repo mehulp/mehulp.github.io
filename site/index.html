@@ -106,6 +106,29 @@
   #panel .content table { border-collapse: collapse; margin: 0 0 14px; font-size: 15px; }
   #panel .content th, #panel .content td { border: 1px solid var(--line); padding: 5px 10px; text-align: left; }
   #panel .content a { color: var(--accent-text); }
+  /* Longer pages: a clear heading hierarchy, comfortable lists, and the "On this page" list (a page opts in with `toc: true`). */
+  #panel .content h2 { margin: 34px 0 10px; font-family: var(--head); font-size: 22px; line-height: 1.25; font-weight: 600; scroll-margin-top: 14px; }
+  #panel .content h3 { margin: 26px 0 8px; font-family: var(--head); font-size: 18px; line-height: 1.3; font-weight: 600; scroll-margin-top: 14px; }
+  #panel .content h2:focus, #panel .content h3:focus { outline: none; }
+  #panel .content ul, #panel .content ol { margin: 0 0 16px; padding-left: 1.3em; }
+  #panel .content li { margin: 0 0 9px; padding-left: .15em; }
+  #panel .content hr { border: 0; border-top: 1px solid var(--line); margin: 26px 0; }
+  /* "On this page": a short list. Two columns on a wide desktop, one tidy column on a medium window, and full-width tappable rows on a phone or touch screen. */
+  #panel .content .toc { margin: 20px 0 4px; padding: 10px 0 6px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font-family: var(--ui); font-size: 14px; line-height: 1.35; }
+  #panel .content .toc-label { display: block; margin: 0 0 4px; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; font-weight: 600; color: var(--text-2); }
+  #panel .content .toc a { display: block; padding: 6px 0; color: var(--ink); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--ink) 30%, transparent); text-underline-offset: 3px; }
+  #panel .content .toc a:hover { color: var(--accent-text); text-decoration-color: var(--accent-text); }
+  #panel .content .toc a:focus-visible { outline-offset: 2px; border-radius: 3px; }
+  @media (min-width: 1280px) and (pointer: fine) {
+    #panel .content .toc { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto repeat(3, auto); grid-auto-flow: column; column-gap: 28px; }
+    #panel .content .toc-label { grid-column: 1 / 3; grid-row: 1; }
+  }
+  @media (max-width: 720px), (pointer: coarse) {
+    #panel .content .toc { padding-bottom: 0; }
+    #panel .content .toc-label { margin-bottom: 8px; }
+    #panel .content .toc a { display: flex; align-items: center; justify-content: space-between; min-height: 48px; padding: 0; font-size: 15px; text-decoration: none; border-top: 1px solid var(--line); }
+    #panel .content .toc a::after { content: '\203A'; margin-left: 14px; font-size: 20px; line-height: 1; color: var(--text-2); }
+  }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 18px; }
   .chip { background: var(--chip); color: var(--ink); border: 0; border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
   .chip:hover { color: var(--accent-text); }
@@ -707,6 +730,13 @@ function goHome() {
 }
 document.getElementById('brand').onclick = goHome;
 panelBody.addEventListener('click', e => {
+  const jump = e.target.closest('a[data-anchor]');   // "On this page": scroll to the heading. It does not touch the address, which says which page is open.
+  if (jump) {
+    e.preventDefault();
+    const h = panelBody.querySelector('#' + CSS.escape(jump.dataset.anchor));
+    if (h) { h.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' }); h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
+    return;
+  }
   const t = e.target.closest('[data-tag],[data-open]'); if (!t) return;
   if (t.dataset.open) openPage(t.dataset.open);
   else { panel.classList.remove('open'); document.body.classList.remove('reading'); setView('graph'); pinNode(byId['tag:' + t.dataset.tag]); }
