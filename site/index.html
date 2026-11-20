@@ -428,7 +428,6 @@ function trackPage(url, title) {
 <div id="options" class="card" role="dialog" aria-label="Appearance">
   <div class="row"><h3 class="lbl">Style</h3><div class="seg" data-opt="style"></div><div class="hint" id="styleHint"></div></div>
   <div class="row"><h3 class="lbl">Layout</h3><div class="seg" data-opt="layout"></div><div class="hint">Floating: the graph fills the screen, with small cards. Split: an intro column on the left, the graph beside it.</div></div>
-  <div class="row"><h3 class="lbl">Depth</h3><div class="seg" data-opt="depth"></div><div class="hint">2D is flatter and easier to read; 3D rotates.</div></div>
   <div class="row"><h3 class="lbl">Motion</h3><div class="seg" data-opt="motion"></div><div class="hint">Flowing sends small dots along the links between pages.</div></div>
   <button class="btn" id="resetOpt">Reset to default</button> <button class="btn" id="closeOpt">Close</button>
 </div>
@@ -475,12 +474,14 @@ const STYLES = {
 const OPTIONS = {
   style:  { night:'Night', paper:'Paper', blueprint:'Blueprint', neon:'Neon', mono:'Mono' },
   layout: { floating:'Floating', split:'Split' },
-  depth:  { d3:'3D', d2:'2D' },
   motion: { still:'Still', flow:'Flowing' }
 };
-const DEFAULTS = { style:'paper', layout:'split', depth:'d3', motion:'flow' };
+const DEFAULTS = { style:'paper', layout:'split', motion:'flow' };
 let opt = Object.assign({}, DEFAULTS);
-try { Object.assign(opt, JSON.parse(localStorage.getItem('portal-appearance-v2') || '{}')); } catch (e) {}
+try {   // only known settings with known values are taken from a saved choice (an old "depth" setting from when there was a 2D option is ignored)
+  const saved = JSON.parse(localStorage.getItem('portal-appearance-v2') || '{}');
+  Object.keys(DEFAULTS).forEach(k => { if (saved && Object.prototype.hasOwnProperty.call(OPTIONS[k], saved[k])) opt[k] = saved[k]; });
+} catch (e) {}
 const S = () => STYLES[opt.style];
 
 const SECTIONS = {
@@ -937,9 +938,9 @@ document.querySelectorAll('#options .seg').forEach(seg => {
   seg.addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; opt[key] = b.dataset.v; applyOptions(key); trackEvent('appearance_change', { option: key, value: opt[key] }); });
 });
 document.getElementById('resetOpt').onclick = () => {
-  const depthChanged = opt.depth !== DEFAULTS.depth, layoutChanged = opt.layout !== DEFAULTS.layout;
+  const layoutChanged = opt.layout !== DEFAULTS.layout;
   opt = Object.assign({}, DEFAULTS);
-  applyOptions(depthChanged ? 'depth' : layoutChanged ? 'layout' : null);
+  applyOptions(layoutChanged ? 'layout' : null);
 };
 // ---------- legend, counts and the corner buttons ----------
 const legendEl = document.getElementById('legend');
@@ -958,7 +959,6 @@ function applyOptions(changed) {
   document.getElementById('styleHint').textContent = st.hint;
   try { localStorage.setItem('portal-appearance-v2', JSON.stringify(opt)); } catch (e) {}
   renderList(); paintLegend(); refresh(); sizeGraph(); measureHeader();
-  if (changed === 'depth') { Graph.numDimensions(opt.depth === 'd2' ? 2 : 3); setTimeout(() => fitView(900), 1600); }
   if (changed === 'layout') setTimeout(() => fitView(600), 300);
 }
 
@@ -1250,7 +1250,7 @@ function drawOverlays() {
   if (document.body.classList.contains('listmode')) return;
   const cam = Graph.camera(), ctl = Graph.controls(), rect = graphEl.getBoundingClientRect(), h = Graph.height();
   if (ctl && 'autoRotate' in ctl) {
-    ctl.autoRotate = opt.motion === 'flow' && opt.depth === 'd3' && !reduceMotion() && !hoverNode && !pinnedNode && !ptr.down && !draggingNode && !document.body.classList.contains('reading');
+    ctl.autoRotate = opt.motion === 'flow' && !reduceMotion() && !hoverNode && !pinnedNode && !ptr.down && !draggingNode && !document.body.classList.contains('reading');
   }
   camMoving = !!lastCam && cam.position.distanceTo(lastCam) > 0.03; lastCam = cam.position.clone();
   // Hover follows the mouse even when the graph moves under a still pointer (settling, rotating, zooming).
@@ -1393,7 +1393,6 @@ function firstFit(tries) {
 }
 setTimeout(() => firstFit(0), 0);
 setTimeout(revealGraph, 1500);   // safety net: never leave the page blank
-if (opt.depth === 'd2') Graph.numDimensions(2);
 applyOptions();
 if (window.innerWidth < 720) setView('list');
 setTimeout(fromHash, 300);
