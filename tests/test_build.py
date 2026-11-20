@@ -93,3 +93,37 @@ def test_on_this_page_list_is_opt_in_and_its_ids_cannot_clash():
     assert 'data-anchor="sec-my-journey"' in html and 'id="sec-my-journey"' in html
     assert 'id="sec-what-im-building-and-learning"' in html       # every id starts with sec-
     assert 'href="#sec-' in html and html.count("data-anchor=") == 2
+
+
+def _section_intro(root, section, text="Hello intro MARKER-X", visibility="public"):
+    path = root / section / "_section.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"---\nvisibility: {visibility}\n---\n\n{text}\n")
+
+
+def test_a_section_intro_is_not_a_page_but_reaches_the_section_data(tmp_path):
+    import shutil
+    content = tmp_path / "content"; shutil.copytree(FIXTURES, content)
+    before_nodes = build.build(content, tmp_path / "a")[0]
+    _section_intro(content, "projects")
+    kept, skipped = build.build(content, tmp_path / "b")
+    assert kept == before_nodes and not any("_section" in i for i in kept + skipped)   # never a page
+    graph_a = (tmp_path / "a" / "graph-data.js").read_text(); graph_b = (tmp_path / "b" / "graph-data.js").read_text()
+    assert graph_a == graph_b                                                          # the graph is untouched
+    data = (tmp_path / "b" / "pages-data.js").read_text()
+    assert "SECTIONS_DATA" in data and "MARKER-X" in data and "window.PAGES_DATA" in data
+
+
+def test_a_private_section_intro_stays_offline(tmp_path):
+    import shutil
+    content = tmp_path / "content"; shutil.copytree(FIXTURES, content)
+    _section_intro(content, "projects", visibility="private"); _section_intro(content, "journal", visibility="draft")
+    (content / "blog").mkdir(exist_ok=True); (content / "blog" / "_section.md").write_text("no front matter MARKER-X\n")
+    build.build(content, tmp_path / "out")
+    assert "MARKER-X" not in (tmp_path / "out" / "pages-data.js").read_text()
+
+
+def test_the_real_projects_intro_is_published_in_the_section_data(tmp_path):
+    build.build(Path(__file__).resolve().parent.parent / "content", tmp_path)
+    data = (tmp_path / "pages-data.js").read_text()
+    assert '"projects"' in data and "preparing for interviews" in data

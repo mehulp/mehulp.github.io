@@ -179,6 +179,13 @@
   .connected button { display: block; width: 100%; text-align: left; background: none; border: 0; color: var(--ink);
     font: inherit; font-size: 14px; padding: 7px 0; border-top: 1px solid var(--line); cursor: pointer; }
   .connected button:hover { color: var(--accent-text); }
+  .sectionpages a { display: block; padding: 9px 0; color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--line); }
+  .sectionpages a:last-child { border-bottom: 0; }
+  .sectionpages a .t { display: block; font-weight: 600; font-size: 15px; }
+  .sectionpages a .t::after { content: '→'; margin-left: .4em; color: var(--accent-text); }
+  .sectionpages a .s { display: block; margin-top: 2px; font-size: 13px; line-height: 1.4; color: var(--text-2); }
+  .sectionpages a:hover .t, .sectionpages a:focus-visible .t { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; }
+  .sectionpages h4 { margin-bottom: 4px; }
   .connected button span { color: var(--quiet); font-size: 12px; margin-left: 6px; }
   .proto-note { position: fixed; top: 64px; left: 18px; z-index: 4; font-size: 12px; color: var(--quiet);
     background: var(--panel); border: 1px dashed var(--line); border-radius: 8px; padding: 6px 10px; max-width: 320px; }
@@ -763,14 +770,14 @@ let lastFocus = null;   // what had focus before the page opened, so closing it 
 let openId = null;           // the page shown in the panel
 const scrollPos = {};        // where the reader got to in each page they have left without closing it (for Back / Forward)
 function openPage(id, fromHash, fresh) {
-  const n = byId[id]; if (!n || n.kind !== 'page') return;
+  const n = byId[id]; if (!n || (n.kind !== 'page' && n.kind !== 'section')) return;   // a page, or a section's own panel (its id is section:<name>)
   const sameOpen = panel.classList.contains('open') && openId === id, keepTop = sameOpen ? panelBody.scrollTop : 0;   // a page that is already open keeps its place
   setHelp(false); setOptions(false);   // their cards would only end up under the reading panel
   if (!panel.classList.contains('open')) { const a = document.activeElement; lastFocus = a && a !== document.body && !panel.contains(a) ? a : null; }
   if (!document.body.classList.contains('reading') && !document.body.classList.contains('listmode')) readStart = { dir: Graph.camera().position.clone().sub(Graph.controls().target).normalize(), up: Graph.camera().up.clone() };
   const others = [...n.neighbors].filter(x => x.kind === 'page');
-  document.getElementById('crumb').textContent = SECTIONS[n.section].title;
-  panelBody.innerHTML = `
+  document.getElementById('crumb').textContent = n.kind === 'section' ? 'Section' : SECTIONS[n.section].title;
+  panelBody.innerHTML = n.kind === 'section' ? sectionHtml(n) : `
     <h1>${n.title}</h1>
     <div class="meta">${SECTIONS[n.section].title}${n.date ? ' · ' + fmtDate(n.date) + '' : ''}</div>
     <div class="chips">${n.tags.map(t => `<button class="chip" data-tag="${t}">#${t}</button>`).join('')}</div>
@@ -781,11 +788,20 @@ function openPage(id, fromHash, fresh) {
   if (fromHash && !fresh && !sameOpen && scrollPos[id]) panelBody.scrollTop = scrollPos[id];   // Back / Forward: back to where they were
   syncTop();
   panel.classList.add('open'); document.body.classList.add('reading');
-  if (!fromHash) { try { history.replaceState(null, '', '#/read/' + id); } catch (e) {} }
+  if (!fromHash) { try { history.replaceState(null, '', n.kind === 'section' ? '#/section/' + n.section : '#/read/' + id); } catch (e) {} }
   setHighlight(n);                   // the open page is the active node, and stays so while its panel is open
   // Frame the graph for this page. If the layout is still settling (a direct link or a reload), wait: the same framing and the same
   // zoom floor then apply as when a page is opened by a click.
   whenSettled(() => { if (selectedNode === n && panel.classList.contains('open')) framePage(n, 800); });
+}
+const openSection = (key, fromHash, fresh) => openPage('section:' + key, fromHash, fresh);
+function sectionHtml(n) {
+  // A section's own panel: its introduction (content/<section>/_section.md, if there is one), then its pages, newest first.
+  const pages = [...n.neighbors].filter(x => x.kind === 'page').sort(byNewest), intro = ((window.SECTIONS_DATA || {})[n.section] || {}).html || '';
+  return `<h1>${esc(n.title)}</h1>
+    <div class="meta">Section · ${plural(pages.length, 'page')}</div>
+    ${intro ? `<div class="content">${intro}</div>` : ''}
+    <div class="connected sectionpages"><h4>${intro ? 'Pages in this section' : 'Pages'}</h4>${pages.length ? pages.map(p => `<a href="#/read/${esc(p.id)}"><span class="t">${esc(p.title)}</span><span class="s">${esc(p.summary || '')}</span></a>`).join('') : '<div class="meta">Nothing published here yet.</div>'}</div>`;
 }
 function closePanel(opts) { if (openId) delete scrollPos[openId]; openId = null; const back0 = lastFocus; lastFocus = null; panel.classList.remove('open'); document.body.classList.remove('reading'); setHighlight(null); const back = opts && opts.restoreAngle ? true : readStart; readStart = null; fitView(900, back);
   if (!(opts && opts.keepAddress)) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }   // keepAddress: the browser already moved the address (Back / Forward), so leave it and the history alone
@@ -841,7 +857,7 @@ function setWide(on) {
   wide = on; try { sessionStorage.setItem('readWide', on ? '1' : '0'); } catch (e) {} paintExpand();
   if (keep) { const r = keep.getBoundingClientRect(); panelBody.scrollTop += r.top - (top - frac * r.height); }
   syncTop();
-  if (panel.classList.contains('open') && selectedNode && selectedNode.kind === 'page') framePage(selectedNode, 600);   // the graph has less (or more) room beside the panel
+  if (panel.classList.contains('open') && selectedNode && (selectedNode.kind === 'page' || selectedNode.kind === 'section')) framePage(selectedNode, 600);   // the graph has less (or more) room beside the panel
 }
 expandBtn.onclick = () => setWide(!wide);
 paintExpand();
@@ -901,7 +917,7 @@ const paintLegend = () => legendEl.querySelectorAll('[data-sec]').forEach(b => {
 { const conn = links.filter(l => l.source !== 'home' && l.target !== 'home').length, tags = nodes.filter(n => n.kind === 'tag').length, pl = (k, w) => `<b>${k}</b> ${w}${k === 1 ? '' : 's'}`;
   document.getElementById('stats').innerHTML = [pl(pageNodes.length, 'page'), pl(Object.keys(SECTIONS).length, 'section'), pl(tags, 'tag'), pl(conn, 'connection')].join(' · '); }
 document.getElementById('homeBtn').onclick = goHome;
-document.getElementById('resetBtn').onclick = () => { if (panel.classList.contains('open') && selectedNode && selectedNode.kind === 'page') framePage(selectedNode, 700); else fitView(700, true); };   // a fresh frame at the opening angle (beside the page, if one is open)
+document.getElementById('resetBtn').onclick = () => { if (panel.classList.contains('open') && selectedNode && (selectedNode.kind === 'page' || selectedNode.kind === 'section')) framePage(selectedNode, 700); else fitView(700, true); };   // a fresh frame at the opening angle (beside the page, if one is open)
 function applyOptions(changed) {
   const st = S();
   Object.entries(st.vars).forEach(([k, v]) => document.documentElement.style.setProperty('--' + k, v));
@@ -925,7 +941,7 @@ function search(text) {
   results.innerHTML = hits.length ? hits.map((n, i) => `<button data-i="${i}" class="${i === 0 ? 'active' : ''}">${n.title}<span class="kind">${n.kind === 'page' ? SECTIONS[n.section].title : n.kind}</span></button>`).join('') : '<div class="meta" style="padding:10px 12px">No matches</div>';
   results.style.display = 'block';
 }
-function choose(n) { results.style.display = 'none'; q.value = ''; q.blur(); if (n.kind === 'page') openPage(n.id); else { setView('graph'); pinNode(n); } }
+function choose(n) { results.style.display = 'none'; q.value = ''; q.blur(); if (n.kind === 'page') openPage(n.id); else if (n.kind === 'section') { setView('graph'); openSection(n.section); } else { setView('graph'); pinNode(n); } }
 q.addEventListener('input', () => search(q.value));
 q.addEventListener('keydown', e => {
   if (!hits.length) return;
@@ -976,7 +992,7 @@ function peekHtml(n, pinned) {
     body = pagesOf.length ? group('Pages', pagesOf.map(p => li(p, p.title, { date: p.date ? fmtDate(p.date) : '', sub: p.summary })), pinned ? 8 : (compact ? 3 : 4))
                             + topics(Object.keys(tally).sort((a, b) => tally[b] - tally[a]).map(t => '#' + t))
                           : '<div class="pk-s pk-empty">Nothing published here yet.</div>';
-    go = pinned ? '' : 'Click to see its pages';
+    go = pinned ? '' : 'Click to read about it';
   } else if (n.kind === 'page') {
     const r = relations(n);
     const also = o => r.tagsWith.has(o) ? 'also shares ' + r.tagsWith.get(o).join(' ') : '';
@@ -997,7 +1013,7 @@ function peekHtml(n, pinned) {
   return `<div class="pk-t">${esc(title)}</div><div class="pk-m">${esc(meta)}</div>${body}${go ? `<div class="pk-go">${go}</div>` : ''}${hint}${close}`;   // close last, so Tab goes through the pages first
 }
 // Keyboard Enter and a mouse click both land here (touch differs for pages: see handleClick).
-function activateNode(n, viaKeyboard) { if (n.kind === 'home') goHome(); else if (n.kind === 'page') openPage(n.id); else pinNode(n, viaKeyboard); }
+function activateNode(n, viaKeyboard) { if (n.kind === 'home') goHome(); else if (n.kind === 'page') openPage(n.id); else if (n.kind === 'section') openSection(n.section); else pinNode(n, viaKeyboard); }
 
 const overlay = document.getElementById('overlay'), graphEl = document.getElementById('graph');
 const peekEl = document.getElementById('peek'), srEl = document.getElementById('sr');
@@ -1312,7 +1328,9 @@ renderQuote();
 function fromHash() {
   const h = location.hash; let id = null;
   if (h.startsWith('#/read/')) { try { id = decodeURIComponent(h.slice(7)); } catch (e) {} }
+  let sec = null; if (h.startsWith('#/section/')) { try { sec = decodeURIComponent(h.slice(10)); } catch (e) {} }
   if (id && byId[id] && byId[id].kind === 'page') openPage(id, true);
+  else if (sec && SECTIONS[sec] && byId['section:' + sec]) openSection(sec, true);
   else if (panel.classList.contains('open')) closePanel({ keepAddress: true });   // an address with no page in it (Back, Forward or an unknown page): close the page and its selection
 }
 window.addEventListener('hashchange', fromHash);

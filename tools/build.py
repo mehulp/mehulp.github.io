@@ -40,6 +40,8 @@ def read_pages(content_dir):
     #   What it does: walks all subfolders of content/, gives each page an id from its path
     #   (content/journal/x.md -> "journal/x"), and keeps the front matter and body together.
     for path in sorted(content_dir.rglob("*.md")):
+        if path.name.startswith("_"):
+            continue   # _section.md is a section's introduction, not a page (see read_sections)
         meta, body = split_front_matter(path.read_text(encoding="utf-8"))
         page_id = path.relative_to(content_dir).with_suffix("").as_posix()
         page = dict(meta)
@@ -50,6 +52,23 @@ def read_pages(content_dir):
             page["date"] = str(page["date"])   # YAML gives a date object; we want text
         pages.append(page)
     return pages
+
+def read_sections(content_dir):
+    """Read each section's introduction: content/<section>/_section.md.
+
+    It is shown in the section's reading panel and is never a page: no bubble, no search or Latest entry, no tags.
+    Like a page it must say `visibility: public` to be published. Returns {section: html}.
+    """
+    intros = {}
+    for section in SECTION_TITLES:
+        path = content_dir / section / "_section.md"
+        if not path.is_file():
+            continue
+        meta, body = split_front_matter(path.read_text(encoding="utf-8"))
+        if meta.get("visibility") == "public" and body.strip():
+            intros[section] = rewrite_links(to_html(body), f"{section}/_section")
+    return intros
+
 
 REQUIRED = ["title", "section", "tags", "summary"]
 
@@ -186,12 +205,14 @@ def rewrite_links(html, page_id):
 
 # ---------- step 6: write the data files ----------
 
-def write_js(path, var_name, data):
+def write_js(path, var_name, data, append=False):
     """Write `window.<var_name> = <data as JSON>;` to path."""
     # Wraps the data as window.X = {...}; so a plain <script> tag can load it.
     # ensure_ascii=False keeps Hindi, Marathi or the rupee sign readable.
     path.parent.mkdir(parents=True, exist_ok=True)
     text = "window." + var_name + " = " + json.dumps(data, ensure_ascii=False, indent=1) + ";\n"
+    if append:
+        text = path.read_text(encoding="utf-8") + text
     path.write_text(text, encoding="utf-8")
 
 
@@ -343,6 +364,7 @@ def build(content_dir, out_dir, include_drafts=(), warnings=None):
                   for p in public}
     write_js(out_dir / "graph-data.js", "GRAPH_DATA", {"nodes": nodes, "links": links})
     write_js(out_dir / "pages-data.js", "PAGES_DATA", pages_data)
+    write_js(out_dir / "pages-data.js", "SECTIONS_DATA", {k: {"html": h} for k, h in read_sections(content_dir).items()}, append=True)
     write_js(out_dir / "quotes-data.js", "QUOTES_DATA", read_quotes(content_dir / "quotes.yml"))
     return [p["id"] for p in public], skipped
 
