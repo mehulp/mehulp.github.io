@@ -531,9 +531,9 @@ function sectionColor(k) { return S().sec[k] || '#888'; }
 function isLit(n) {
   if (n.kind === 'home') return true;           // the anchor never fades, whatever is selected
   if (hiNodes.size) return hiNodes.has(n);
-  if (n.kind === 'section') return true;
   const h = hv();
-  return !!h && (n === h || h.neighbors.has(n));
+  if (h) return n === h || h.neighbors.has(n);   // hovering: only that bubble and its neighbours (the other sections step back too)
+  return n.kind === 'section';                   // nothing chosen: the sections carry the colour
 }
 function isLinkLit(l) {
   if (hiLinks.size) return hiLinks.has(l);
@@ -546,7 +546,7 @@ function isLinkLit(l) {
 const rgbOf = c => { c = String(c).trim(); if (c[0] === '#') { if (c.length === 4) c = '#' + [...c.slice(1)].map(x => x + x).join(''); const v = parseInt(c.slice(1), 16); return [v >> 16 & 255, v >> 8 & 255, v & 255]; } return (c.match(/[\d.]+/g) || [128, 128, 128]).slice(0, 3).map(Number); };
 const mixToward = (c, bg, t) => { const a = rgbOf(c), b = rgbOf(bg); return 'rgb(' + a.map((v, i) => Math.round(v * (1 - t) + b[i] * t)).join(',') + ')'; };
 const scaleAlpha = (c, k) => { const m = String(c).match(/^rgba\(([^)]+)\)$/); if (!m) return c; const p = m[1].split(',').map(x => x.trim()); return 'rgba(' + p[0] + ',' + p[1] + ',' + p[2] + ',' + (parseFloat(p[3]) * k).toFixed(3) + ')'; };
-const FADE = { section: 0.42, page: 0.55, tag: 0.3 }, FLOOR = { section: 1.7, page: 1.35, tag: 1.3 };   // how far to fade, and the least contrast with the background to keep
+const FADE = { section: 0.55, page: 0.55, tag: 0.3 }, FLOOR = { section: 1.35, page: 1.35, tag: 1.3 };   // how far to fade, and the least contrast with the background to keep
 const lum = c => { const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; const [r, g, b] = rgbOf(c); return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
 const contrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
 function fadedColor(base, bg, t, floor) {
@@ -557,7 +557,9 @@ function fadedColor(base, bg, t, floor) {
 function nodeColor(n) {
   const base = n.kind === 'home' ? S().vars.ink : n.kind === 'tag' ? S().tag : sectionColor(n.section);
   if (isLit(n)) return base;
-  return hiNodes.size ? fadedColor(base, S().vars.bg, FADE[n.kind] || 0.5, FLOOR[n.kind] || 1.3) : S().dim;
+  if (hiNodes.size) return n.kind === 'section' ? fadedColor(base, S().vars.bg, FADE.section, FLOOR.section) : S().dim;   // something is selected: other sections fade back (keeping a hint of colour); other pages and tags go back to neutral grey
+  if (n.kind === 'section') return fadedColor(base, S().vars.bg, 0.42, 1.7);                              // hovering: the other sections step back gently and keep a hint of their colour
+  return S().dim;
 }
 function linkColor(l) {
   if (isLinkLit(l)) return (hiLinks.size || hv()) ? S().ref : (l.type === 'ref' ? S().ref : S().link);   // a selection's own connections stand out
