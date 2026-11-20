@@ -351,6 +351,22 @@
     #panel .top .btn { min-width: 44px; }
   }
 </style>
+<script>
+// Umami analytics: loads only on the live site (never on localhost or file://).
+if (location.protocol !== 'file:' && !/^(localhost|127\.0\.0\.1|0\.0\.0\.0|::1|)$/.test(location.hostname)) {
+  const s = document.createElement('script');
+  s.defer = true;
+  s.src = 'https://cloud.umami.is/script.js';
+  s.dataset.websiteId = '0ad8331d-d0bb-434e-85fa-0f34e07e0472';
+  document.head.appendChild(s);
+}
+function trackEvent(name, data) {
+  try { if (window.umami && typeof window.umami.track === 'function') window.umami.track(name, data); } catch (e) {}
+}
+function trackPage(url, title) {
+  try { if (window.umami && typeof window.umami.track === 'function') window.umami.track(p => ({ ...p, url, title })); } catch (e) {}
+}
+</script>
 </head>
 <body>
 <aside id="side">
@@ -579,9 +595,10 @@ const Graph = ForceGraph3D({ controlType: 'orbit' })(document.getElementById('gr
     if (n.kind === 'home') { n.fx = 0; n.fy = 0; n.fz = 0; n.x = 0; n.y = 0; n.z = 0; }
   })
   .onNodeDragEnd(n => {
+    const wasDragging = draggingNode;
     draggingNode = false;
     if (n.kind === 'home') { n.fx = 0; n.fy = 0; n.fz = 0; }
-    else { n.fx = undefined; n.fy = undefined; n.fz = undefined; }
+    else { n.fx = undefined; n.fy = undefined; n.fz = undefined; if (wasDragging) trackEvent('node_drag', { kind: n.kind, id: n.id }); }
   })
   .warmupTicks(120).cooldownTicks(0)   // first pass: work the layout out up front, so it can be framed before anything is drawn
   .onEngineStop(endSettling);
@@ -772,7 +789,7 @@ function fmtDate(d) { if (!d) return ''; const [y, m, day] = d.split('-'); retur
 let lastFocus = null;   // what had focus before the page opened, so closing it can give focus back
 let openId = null;           // the page shown in the panel
 const scrollPos = {};        // where the reader got to in each page they have left without closing it (for Back / Forward)
-function openPage(id, fromHash, fresh) {
+function openPage(id, fromHash, fresh, via) {
   const n = byId[id]; if (!n || (n.kind !== 'page' && n.kind !== 'section')) return;   // a page, or a section's own panel (its id is section:<name>)
   const sameOpen = panel.classList.contains('open') && openId === id, keepTop = sameOpen ? panelBody.scrollTop : 0;   // a page that is already open keeps its place
   setHelp(false); setOptions(false);   // their cards would only end up under the reading panel
@@ -791,13 +808,18 @@ function openPage(id, fromHash, fresh) {
   if (fromHash && !fresh && !sameOpen && scrollPos[id]) panelBody.scrollTop = scrollPos[id];   // Back / Forward: back to where they were
   syncTop();
   panel.classList.add('open'); document.body.classList.add('reading');
-  if (!fromHash) { try { history.replaceState(null, '', n.kind === 'section' ? '#/section/' + n.section : '#/read/' + id); } catch (e) {} }
+  const virtualPath = n.kind === 'section' ? '/section/' + n.section : '/read/' + id;
+  if (!fromHash) { try { history.replaceState(null, '', '#' + virtualPath); } catch (e) {} }
+  if (!sameOpen) {
+    trackPage(virtualPath, n.title);
+    trackEvent('page_open', { id, kind: n.kind, section: n.section, via: via || (fromHash ? 'direct' : 'graph') });
+  }
   setHighlight(n);                   // the open page is the active node, and stays so while its panel is open
   // Frame the graph for this page. If the layout is still settling (a direct link or a reload), wait: the same framing and the same
   // zoom floor then apply as when a page is opened by a click.
   whenSettled(() => { if (selectedNode === n && panel.classList.contains('open')) framePage(n, 800); });
 }
-const openSection = (key, fromHash, fresh) => openPage('section:' + key, fromHash, fresh);
+const openSection = (key, fromHash, fresh, via) => openPage('section:' + key, fromHash, fresh, via);
 function sectionHtml(n) {
   // A section's own panel: its introduction (content/<section>/_section.md, if there is one), then its pages, newest first.
   const pages = [...n.neighbors].filter(x => x.kind === 'page').sort(byNewest), intro = ((window.SECTIONS_DATA || {})[n.section] || {}).html || '';
@@ -829,15 +851,15 @@ panelBody.addEventListener('click', e => {
   const lk = e.target.closest('a[href^="#/read/"]');   // a link to another page: open it from the top, and let Back return here
   if (lk && !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button)) {
     let id = null; try { id = decodeURIComponent(lk.getAttribute('href').slice(7)); } catch (err) {}
-    if (id && byId[id] && byId[id].kind === 'page') { e.preventDefault(); if (location.hash !== lk.getAttribute('href')) { try { history.pushState(null, '', lk.getAttribute('href')); } catch (err) {} } openPage(id, true, true); return; }
+    if (id && byId[id] && byId[id].kind === 'page') { e.preventDefault(); if (location.hash !== lk.getAttribute('href')) { try { history.pushState(null, '', lk.getAttribute('href')); } catch (err) {} } openPage(id, true, true, 'link'); return; }
   }
   const t = e.target.closest('[data-tag],[data-open]'); if (!t) return;
-  if (t.dataset.open) openPage(t.dataset.open);
+  if (t.dataset.open) openPage(t.dataset.open, false, false, 'connected');
   else { if (openId) delete scrollPos[openId]; openId = null; panel.classList.remove('open'); document.body.classList.remove('reading'); setView('graph'); pinNode(byId['tag:' + t.dataset.tag]); }
 });
 document.getElementById('closeBtn').onclick = closePanel;
 document.getElementById('copyBtn').onclick = async e => {
-  try { await navigator.clipboard.writeText(location.href); e.target.textContent = 'Copied'; }
+  try { await navigator.clipboard.writeText(location.href); e.target.textContent = 'Copied'; trackEvent('copy_link', { id: openId || 'home' }); }
   catch (err) { e.target.textContent = 'Copy failed'; }
   setTimeout(() => e.target.textContent = 'Copy link', 1500);
 };
@@ -873,7 +895,7 @@ document.querySelectorAll('.latestItems').forEach(el => el.innerHTML = dated.map
 document.getElementById('latestPeek').textContent = dated[0] ? dated[0].title : '';
 document.addEventListener('click', e => {
   const a = e.target.closest('.latest [data-open], #list [data-open]');
-  if (a && !(e.metaKey || e.ctrlKey || e.shiftKey || e.button)) { e.preventDefault(); openPage(a.dataset.open); }
+  if (a && !(e.metaKey || e.ctrlKey || e.shiftKey || e.button)) { e.preventDefault(); openPage(a.dataset.open, false, false, a.closest('#list') ? 'list' : 'latest'); }
 });
 // The Latest panel is open on a wide screen and a compact bar on a narrow one.
 const latestEl = document.getElementById('latest');
@@ -894,8 +916,8 @@ function setView(v) {
   document.getElementById('viewList').classList.toggle('on', v === 'list');
   document.getElementById('viewGraph').setAttribute('aria-pressed', v === 'graph'); document.getElementById('viewList').setAttribute('aria-pressed', v === 'list');
 }
-document.getElementById('viewGraph').onclick = () => setView('graph');
-document.getElementById('viewList').onclick = () => setView('list');
+document.getElementById('viewGraph').onclick = () => { setView('graph'); trackEvent('view_switch', { view: 'graph' }); };
+document.getElementById('viewList').onclick = () => { setView('list'); trackEvent('view_switch', { view: 'list' }); };
 
 // ---------- options panel ----------
 const optPanel = document.getElementById('options');
@@ -906,7 +928,7 @@ document.getElementById('closeOpt').onclick = () => { setOptions(false); optBtn.
 document.querySelectorAll('#options .seg').forEach(seg => {
   const key = seg.dataset.opt;
   seg.innerHTML = Object.entries(OPTIONS[key]).map(([v, label]) => `<button data-v="${v}">${label}</button>`).join('');
-  seg.addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; opt[key] = b.dataset.v; applyOptions(key); });
+  seg.addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; opt[key] = b.dataset.v; applyOptions(key); trackEvent('appearance_change', { option: key, value: opt[key] }); });
 });
 document.getElementById('resetOpt').onclick = () => {
   const depthChanged = opt.depth !== DEFAULTS.depth, layoutChanged = opt.layout !== DEFAULTS.layout;
@@ -916,7 +938,7 @@ document.getElementById('resetOpt').onclick = () => {
 // ---------- legend, counts and the corner buttons ----------
 const legendEl = document.getElementById('legend');
 legendEl.innerHTML = Object.keys(SECTIONS).map(k => `<button type="button" data-sec="${k}"><span class="dot"></span>${SECTIONS[k].title}<span class="n">${pageNodes.filter(p => p.section === k).length}</span></button>`).join('');
-legendEl.addEventListener('click', e => { const b = e.target.closest('[data-sec]'); if (b) { setView('graph'); activateNode(byId['section:' + b.dataset.sec], e.detail === 0); } });
+legendEl.addEventListener('click', e => { const b = e.target.closest('[data-sec]'); if (b) { setView('graph'); openSection(b.dataset.sec, false, false, 'legend'); } });
 const paintLegend = () => legendEl.querySelectorAll('[data-sec]').forEach(b => { b.firstChild.style.background = sectionColor(b.dataset.sec); });
 { const conn = links.filter(l => l.source !== 'home' && l.target !== 'home').length, tags = nodes.filter(n => n.kind === 'tag').length, pl = (k, w) => `<b>${k}</b> ${w}${k === 1 ? '' : 's'}`;
   document.getElementById('stats').innerHTML = [pl(pageNodes.length, 'page'), pl(Object.keys(SECTIONS).length, 'section'), pl(tags, 'tag'), pl(conn, 'connection')].join(' · '); }
@@ -945,7 +967,7 @@ function search(text) {
   results.innerHTML = hits.length ? hits.map((n, i) => `<button data-i="${i}" class="${i === 0 ? 'active' : ''}">${n.title}<span class="kind">${n.kind === 'page' ? SECTIONS[n.section].title : n.kind}</span></button>`).join('') : '<div class="meta" style="padding:10px 12px">No matches</div>';
   results.style.display = 'block';
 }
-function choose(n) { results.style.display = 'none'; q.value = ''; q.blur(); if (n.kind === 'page') openPage(n.id); else if (n.kind === 'section') { setView('graph'); openSection(n.section); } else { setView('graph'); pinNode(n); } }
+function choose(n) { results.style.display = 'none'; q.value = ''; q.blur(); trackEvent('search_select', { kind: n.kind, id: n.id }); if (n.kind === 'page') openPage(n.id, false, false, 'search'); else if (n.kind === 'section') { setView('graph'); openSection(n.section, false, false, 'search'); } else { setView('graph'); pinNode(n); } }
 q.addEventListener('input', () => search(q.value));
 q.addEventListener('keydown', e => {
   if (!hits.length) return;
@@ -1017,7 +1039,7 @@ function peekHtml(n, pinned) {
   return `<div class="pk-t">${esc(title)}</div><div class="pk-m">${esc(meta)}</div>${body}${go ? `<div class="pk-go">${go}</div>` : ''}${hint}${close}`;   // close last, so Tab goes through the pages first
 }
 // Keyboard Enter and a mouse click both land here (touch differs for pages: see handleClick).
-function activateNode(n, viaKeyboard) { if (n.kind === 'home') goHome(); else if (n.kind === 'page') openPage(n.id); else if (n.kind === 'section') openSection(n.section); else pinNode(n, viaKeyboard); }
+function activateNode(n, viaKeyboard) { const via = viaKeyboard ? 'keyboard' : 'graph'; if (n.kind === 'home') goHome(); else if (n.kind === 'page') openPage(n.id, false, false, via); else if (n.kind === 'section') openSection(n.section, false, false, via); else pinNode(n, viaKeyboard); }
 
 const overlay = document.getElementById('overlay'), graphEl = document.getElementById('graph');
 const peekEl = document.getElementById('peek'), srEl = document.getElementById('sr');
@@ -1142,7 +1164,7 @@ function resetPinnedCard() {
 function unpin() { if (!pinnedNode) return; resetPinnedCard(); setHighlight(null); }
 peekEl.addEventListener('click', e => {
   if (e.target.closest('.pk-close')) { const inCard = peekEl.contains(document.activeElement); unpin(); if (inCard) graphEl.focus({ preventScroll: true }); return; }
-  const t = e.target.closest('[data-open]'); if (t) openPage(t.dataset.open);
+  const t = e.target.closest('[data-open]'); if (t) openPage(t.dataset.open, false, false, 'peek');
 });
 const setRow = e => { const r = e.target.closest && e.target.closest('[data-open]'); const n = r ? byId[r.dataset.open] : null; if (n !== rowNode) { rowNode = n; refresh(); } };
 peekEl.addEventListener('mouseover', setRow); peekEl.addEventListener('focusin', setRow);
