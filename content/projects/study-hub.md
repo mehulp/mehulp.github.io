@@ -1,6 +1,7 @@
 ---
 title: Study Hub
 section: projects
+date: 2026-11-20
 tags: [python, fastapi, react, microservices]
 visibility: public
 summary: One place to organise my learning resources and keep track of what I'm studying.
