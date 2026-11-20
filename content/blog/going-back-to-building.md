@@ -89,4 +89,4 @@ For now, I'm enjoying taking an idea, building something around it, getting stuc
 
 And that's what this website is about. A place to share what I'm building, what I'm learning and the things I figure out along the way.
 
-More about me: [About Me](../about/index.md).
+More about me, in: [My Story](../about/index.md).

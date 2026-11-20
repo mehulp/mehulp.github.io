@@ -106,6 +106,9 @@
   .quote-box blockquote { margin: 0; font-family: var(--read); font-style: italic; font-size: 14.5px; line-height: 1.5; color: var(--text-2); }
   .quote-box cite { display: block; margin-top: 6px; font-style: normal; font-family: var(--ui); font-size: 12px; color: var(--quiet); }
   #side h1 { font-family: var(--head); font-size: 30px; line-height: 1.15; margin: 0 0 6px; font-weight: 600; }
+  #side .sidebrand { all: unset; cursor: pointer; border-radius: 4px; }
+  #side .sidebrand:hover { text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: 5px; }
+  #side .sidebrand:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
   #side .role { color: var(--quiet); font-size: 14px; margin-bottom: 18px; }
   #side p { font-family: var(--read); font-size: 15.5px; line-height: 1.55; margin: 0 0 22px; }
   #side .block { margin-bottom: 22px; }
@@ -351,7 +354,7 @@
 </head>
 <body>
 <aside id="side">
-  <h1>Mehul Patankar</h1>
+  <h1><button class="sidebrand" id="sideBrand" type="button" title="Home: the whole graph">Mehul Patankar</button></h1>
   <div class="role">Engineering manager, back to building</div>
   <p>Fifteen years of writing code, then engineering leadership. Now I'm building again, because AI is changing what leading engineers needs. This is where the work lives.</p>
   <div class="block latest"><h3 class="lbl">Latest</h3><div class="latestItems"></div></div>
@@ -814,6 +817,7 @@ function goHome() {
   pulseHome();   // visible feedback even when the graph is already home, so a click never seems to do nothing
 }
 document.getElementById('brand').onclick = goHome;
+document.getElementById('sideBrand').onclick = goHome;   // the name in the Split layout's sidebar does the same
 panelBody.addEventListener('click', e => {
   const jump = e.target.closest('a[data-anchor]');   // "On this page": scroll to the heading. It does not touch the address, which says which page is open.
   if (jump) {

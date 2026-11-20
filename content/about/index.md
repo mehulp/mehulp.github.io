@@ -1,5 +1,5 @@
 ---
-title: About Me
+title: My Story
 section: about
 tags: [leadership, building, ai]
 visibility: public
