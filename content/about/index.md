@@ -51,9 +51,8 @@ I've written more about this in [*Going Back to Building*](../blog/going-back-to
 
 These days, I'm working on a few personal projects, mostly around problems that interest me or things I find useful.
 
-- **Study Hub:** A place to organise learning resources and study plans.
-- **InterviewPal:** A tool to practise interview questions and improve how I structure my answers.
-- **Pik Nirnay:** An attempt to help farmers make better crop decisions using weather, climate risks and agricultural data.
+- **[Study Hub](../projects/study-hub.md):** A place to organise learning resources and study plans.
+- **[InterviewPal](../projects/interviewpal.md):** A tool to practise interview questions and improve how I structure my answers.
 - **[Job Search Copilot](../projects/job-copilot.md):** An experiment with AI to make job searching and role matching more useful.
 
 I'm also exploring AI agents, RAG, embeddings and system design.

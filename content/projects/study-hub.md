@@ -101,7 +101,7 @@ I've maintained an architecture and decision log alongside the code. Looking bac
 
 Study Hub is deployed and usable. The main features around organising resources, Learning Plans and shared boards are working.
 
-I'm continuing to improve it as part of my learning. One area I'm exploring is connecting Study Hub with InterviewPal, so that learning resources and interview practice can be part of the same flow.
+I'm continuing to improve it as part of my learning. One area I'm exploring is connecting Study Hub with [InterviewPal](interviewpal.md), so that learning resources and interview practice can be part of the same flow.
 
 There's still room for improvement, but the application already serves the purpose for which I started building it.
 
