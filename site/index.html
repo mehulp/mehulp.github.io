@@ -20,7 +20,7 @@
   @media (max-width: 720px) { :root { --panelw: 100vw; } }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: var(--ui); overflow: hidden; }
-  #graph { position: fixed; inset: 0; opacity: 0; transition: opacity .25s ease; }
+  #graph { position: fixed; inset: 0; opacity: 0; transition: opacity .25s ease; background-color: var(--bg); background-image: radial-gradient(color-mix(in srgb, var(--ink) 14%, transparent) 1px, transparent 1px); background-size: 24px 24px; }
   #graph.ready { opacity: 1; }
   body.split #graph { left: var(--side); }
   header { position: fixed; top: 0; left: 0; right: 0; display: flex; align-items: flex-start; gap: 16px;
@@ -64,6 +64,24 @@
   .seg button:focus-visible { outline-offset: -3px; }
   #graph:focus-visible { outline: none; }
   .brand:focus-visible { outline-offset: 4px; border-radius: 4px; }
+  /* Stats line under the invitation; Legend along the bottom; Reset / Home in the bottom-right corner. */
+  .stats { margin: 6px 0 0; font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+  .stats b { font-weight: 600; color: var(--ink); }
+  #legend { position: fixed; left: 330px; bottom: 20px; z-index: 4; display: flex; align-items: center; gap: 4px; padding: 4px 8px; max-width: calc(100vw - 330px - 140px); }
+  #legend button { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: none; color: var(--ink); font: 500 12.5px var(--ui); cursor: pointer; white-space: nowrap; }
+  #legend button:hover { background: var(--chip); }
+  #legend .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  #legend .n { color: var(--text-2); font-variant-numeric: tabular-nums; }
+  #navbtns { position: fixed; right: 20px; bottom: 20px; z-index: 4; display: flex; gap: 8px; }
+  #navbtns button { width: 40px; height: 40px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); box-shadow: var(--shadow); cursor: pointer; }
+  #navbtns button:hover { background: var(--chip); }
+  #navbtns svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  body.split #legend { left: calc(var(--side) + 20px); }
+  body.listmode #legend, body.listmode #navbtns { display: none; }
+  @media (min-width: 721px) { body.reading #legend { display: none; } body.reading #navbtns { right: calc(var(--panelw) + 16px); } body.reading #options, body.reading #help { right: calc(var(--panelw) + 20px); } }
+  @media (max-width: 1000px) { #legend { display: none; } }
+  @media (max-width: 720px) { #navbtns, .stats { display: none; } }
+  @media (pointer: coarse) { #legend button { height: 44px; } #navbtns button { width: 44px; height: 44px; } }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
   #latest { position: fixed; left: 20px; bottom: 20px; width: 290px; padding: 0; z-index: 4; }
   #latest summary { display: flex; align-items: center; gap: 8px; padding: 12px 16px 6px; cursor: pointer; list-style: none; }
@@ -83,7 +101,10 @@
   body.split #latest { display: none; }
   #side { display: none; position: fixed; left: 0; top: 0; bottom: 0; width: var(--side); background: var(--panel);
     border-right: 1px solid var(--line); padding: 28px 28px 24px; overflow: auto; z-index: 5; }
-  body.split #side { display: block; }
+  body.split #side { display: flex; flex-direction: column; }
+  .quote-box { margin-top: auto; padding-top: 18px; border-top: 1px solid var(--line); }
+  .quote-box blockquote { margin: 0; font-family: var(--read); font-style: italic; font-size: 14.5px; line-height: 1.5; color: var(--text-2); }
+  .quote-box cite { display: block; margin-top: 6px; font-style: normal; font-family: var(--ui); font-size: 12px; color: var(--quiet); }
   #side h1 { font-family: var(--head); font-size: 30px; line-height: 1.15; margin: 0 0 6px; font-weight: 600; }
   #side .role { color: var(--quiet); font-size: 14px; margin-bottom: 18px; }
   #side p { font-family: var(--read); font-size: 15.5px; line-height: 1.55; margin: 0 0 22px; }
@@ -99,6 +120,27 @@
   #panel .content img, #panel .content pre { max-width: 100%; }
   #panel .content pre { overflow-x: auto; }
   #closeBtn .lab-m { display: none; }
+  /* Expand / Restore: a compact icon button; the wide reading size is for desktop windows only. */
+  #expandBtn { width: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+  #expandBtn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  #expandBtn .ico-restore, body.expanded #expandBtn .ico-expand { display: none; }
+  body.expanded #expandBtn .ico-restore { display: block; }
+  @media (max-width: 900px) { #expandBtn { display: none; } }
+  @media (min-width: 901px) {
+    /* Expanded: about 72% of the window, never leaving the graph less than 300px, and the article keeps a comfortable line length. */
+    body.expanded { --panelw: max(clamp(360px, 38vw, 520px), min(72vw, calc(100vw - 300px), 1400px)); }
+    body.expanded #panel .body > * { max-width: 38rem; margin-left: auto; margin-right: auto; }
+    body.expanded #panel .body { padding-left: 32px; padding-right: 32px; }
+  }
+  /* Back to top: a small round button at the panel's bottom-right; it only exists (visibly and for Tab) once the reader has scrolled. */
+  #toTop { position: absolute; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom)); width: 40px; height: 40px; border-radius: 50%; padding: 0;
+    display: flex; align-items: center; justify-content: center; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink);
+    box-shadow: 0 2px 10px rgba(0,0,0,.18); cursor: pointer; opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility 0s linear .2s; z-index: 3; }
+  #toTop.on { opacity: .94; visibility: visible; transition: opacity .2s ease; }
+  #toTop:hover { background: var(--chip); opacity: 1; }
+  #toTop svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  @media (pointer: coarse) { #toTop { width: 44px; height: 44px; } }
+  @media (prefers-reduced-motion: reduce) { #toTop, #toTop.on { transition: none; } }
   #panel h1 { font-family: var(--head); font-weight: 600; font-size: 28px; line-height: 1.2; margin: 0 0 8px; }
   #panel .meta, .meta { color: var(--quiet); font-size: 12.5px; margin-bottom: 14px; }
   #panel .content { font-family: var(--read); font-size: 17px; line-height: 1.6; }
@@ -151,14 +193,14 @@
   #list a:hover { border-color: var(--accent); }
   body.listmode #list { display: block; }
   body.listmode #latest { display: none; }
-  #options { position: fixed; top: calc(var(--hh) + 4px); right: 20px; width: min(360px, calc(100vw - 24px)); max-height: calc(100vh - var(--hh) - 20px); overflow: auto; padding: 16px 18px; z-index: 9; display: none; }
+  #options { position: fixed; top: calc(var(--hh) + 4px); right: 20px; width: min(360px, calc(100vw - 24px)); max-height: calc(100vh - var(--hh) - 20px); overflow: auto; padding: 16px 18px; z-index: 12; display: none; }
   #options.open { display: block; }
   #options .row { margin-bottom: 14px; }
   #options .row h3 { margin-bottom: 6px; }
   #options .hint { color: var(--quiet); font-size: 12px; margin-top: 5px; line-height: 1.4; }
   #options .choice { font-size: 12.5px; background: var(--panel-2); border-radius: 8px; padding: 8px 10px; margin: 6px 0 10px; }
   /* The help card: opened by the "?" button, closed by Esc, a click elsewhere or its button. It sits under the header, not over the graph's middle. */
-  #help { position: fixed; top: calc(var(--hh) + 4px); right: 20px; width: min(350px, calc(100vw - 24px)); z-index: 9; padding: 16px 18px 14px; font-size: 13.5px; line-height: 1.45; }
+  #help { position: fixed; top: calc(var(--hh) + 4px); right: 20px; width: min(350px, calc(100vw - 24px)); z-index: 12; padding: 16px 18px 14px; font-size: 13.5px; line-height: 1.45; }
   #help[hidden] { display: none; }
   #help { max-height: calc(100vh - var(--hh) - 16px); overflow: auto; }
   #help h3 { margin: 0 0 8px; font-size: 15px; font-family: var(--head); }
@@ -250,7 +292,7 @@
      switch in half): the invitation steps aside, and on a window too narrow for the controls they wait until the page is closed. */
   @media (min-width: 721px) {
     body.reading header { right: var(--panelw); }
-    body.reading .lede { display: none; }
+    body.reading .lede, body.reading .stats { display: none; }
   }
   @media (min-width: 721px) and (max-width: 1250px) { body.reading header .controls { display: none; } }
   /* Medium windows: the invitation wraps and the controls may drop to a second line rather than crowd the name. */
@@ -306,18 +348,20 @@
   <div class="role">Engineering manager, back to building</div>
   <p>Fifteen years of writing code, then engineering leadership. Now I'm building again, because AI is changing what leading engineers needs. This is where the work lives.</p>
   <div class="block latest"><h3 class="lbl">Latest</h3><div class="latestItems"></div></div>
+  <div class="block quote-box" id="sideQuote"></div>
 </aside>
 <header id="top">
   <div class="id">
     <button class="brand" id="brand" type="button" title="Home: the whole graph">Mehul Patankar<small>Engineering manager, back to building</small></button>
     <p class="lede" id="lede">Explore the connections between my projects, writing and ideas.</p>
+    <p class="stats" id="stats"></p>
   </div>
   <div class="controls">
     <div class="seg" role="group" aria-label="View">
       <button id="viewGraph" class="on" aria-pressed="true">Graph</button>
       <button id="viewList" aria-pressed="false">List</button>
     </div>
-    <button class="btn primary" id="optBtn" aria-expanded="false" aria-controls="options">Appearance</button>
+    <button class="btn" id="optBtn" aria-expanded="false" aria-controls="options">Appearance</button>
     <div class="search">
       <input id="q" type="search" placeholder="Search pages and tags" autocomplete="off" aria-label="Search pages and tags">
       <div class="results" id="results"></div>
@@ -341,6 +385,11 @@
 <div id="overlay" aria-hidden="true"></div>
 <div id="peek" aria-hidden="true" tabindex="-1"></div>
 <div id="sr" class="sr-only" role="status" aria-live="polite"></div>
+<nav id="legend" class="card" aria-label="Sections"></nav>
+<div id="navbtns" role="group" aria-label="Graph view">
+  <button id="resetBtn" type="button" aria-label="Reset the view" title="Reset the view"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.7-4M13 2v3h-3"/></svg></button>
+  <button id="homeBtn" type="button" aria-label="Home: the whole graph" title="Home: the whole graph"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 7.5 8 2.5l5.5 5M4 6.5v7h8v-7"/></svg></button>
+</div>
 <details id="latest" class="card latest" open>
   <summary><span class="lbl">Latest</span><span class="peekline" id="latestPeek"></span></summary>
   <div class="latestItems"></div>
@@ -354,14 +403,16 @@
   <button class="btn" id="resetOpt">Reset to default</button> <button class="btn" id="closeOpt">Close</button>
 </div>
 <aside id="panel" aria-live="polite">
-  <div class="top"><div class="crumb" id="crumb"></div><button class="btn" id="copyBtn">Copy link</button><button class="btn" id="closeBtn" aria-label="Close page"><span class="lab-d">Close</span><span class="lab-m">← Graph</span></button></div>
+  <div class="top"><div class="crumb" id="crumb"></div><button class="btn" id="expandBtn" type="button" aria-label="Expand reading panel" title="Expand reading panel"><svg class="ico-expand" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 2.5h4v4M13.5 2.5 9 7M6.5 13.5h-4v-4M2.5 13.5 7 9"/></svg><svg class="ico-restore" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 6.5h-4v-4M9.5 6.5 14 2M2.5 9.5h4v4M6.5 9.5 2 14"/></svg></button><button class="btn" id="copyBtn">Copy link</button><button class="btn" id="closeBtn" aria-label="Close page"><span class="lab-d">Close</span><span class="lab-m">← Graph</span></button></div>
   <div class="body" id="panelBody"></div>
+  <button id="toTop" type="button" aria-label="Back to top" title="Back to top"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5"/></svg></button>
 </aside>
 
 <script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1.80.1/dist/3d-force-graph.min.js"></script>
 <!-- Loads the two files build.py writes, so window.GRAPH_DATA and window.PAGES_DATA exist. -->
 <script src="graph-data.js"></script>
 <script src="pages-data.js"></script>
+<script src="quotes-data.js"></script>
 <script>
 // ---------- design options ----------
 const STYLES = {
@@ -397,9 +448,9 @@ const OPTIONS = {
   depth:  { d3:'3D', d2:'2D' },
   motion: { still:'Still', flow:'Flowing' }
 };
-const DEFAULTS = { style:'paper', layout:'floating', depth:'d3', motion:'flow' };
+const DEFAULTS = { style:'paper', layout:'split', depth:'d3', motion:'flow' };
 let opt = Object.assign({}, DEFAULTS);
-try { Object.assign(opt, JSON.parse(localStorage.getItem('portal-appearance') || '{}')); } catch (e) {}
+try { Object.assign(opt, JSON.parse(localStorage.getItem('portal-appearance-v2') || '{}')); } catch (e) {}
 const S = () => STYLES[opt.style];
 
 const SECTIONS = {
@@ -447,7 +498,7 @@ function setHighlight(node) {
   if (pinnedNode && node !== pinnedNode) resetPinnedCard();   // anything else being selected (or nothing) releases the pinned card
   hiNodes.clear(); hiLinks.clear();
   selectedNode = node;
-  if (node) { hiNodes.add(node); node.neighbors.forEach(n => hiNodes.add(n)); node.edges.forEach(l => hiLinks.add(l)); }
+  if (node) { hiNodes.add(node); node.neighbors.forEach(n => hiNodes.add(n)); node.edges.forEach(l => hiLinks.add(l)); if (node.section || (node.tags && node.tags.length)) renderQuote(node.section, node.tags); }
   refresh();
 }
 function sectionColor(k) { return S().sec[k] || '#888'; }
@@ -496,11 +547,12 @@ function linkWidth(l) { return joinsRow(l) ? 2.8 : (hiLinks.has(l) || (!hiLinks.
 // While the bubbles settle after load, positions are still changing, so anything that frames the graph waits for them to finish.
 const settleQueue = [];
 function whenSettled(fn) { if (!document.body.classList.contains('settling')) fn(); else settleQueue.push(fn); }
-function endSettling() { document.body.classList.remove('settling'); settleQueue.splice(0).forEach(fn => fn()); }
+function endSettling() { document.body.classList.remove('settling'); if (Graph.cooldownTicks() !== Infinity) Graph.cooldownTicks(Infinity); settleQueue.splice(0).forEach(fn => fn()); }
 const home = byId.home;
 if (home) { home.fx = 0; home.fy = 0; home.fz = 0; }
 
-const Graph = ForceGraph3D()(document.getElementById('graph'))
+let draggingNode = false;
+const Graph = ForceGraph3D({ controlType: 'orbit' })(document.getElementById('graph'))
   .graphData({ nodes, links })
   .nodeId('id').nodeVal('val').nodeRelSize(4).nodeOpacity(0.95).nodeResolution(16)
   .nodeLabel(() => '')   // the peek card below replaces the library's own tooltip
@@ -510,14 +562,23 @@ const Graph = ForceGraph3D()(document.getElementById('graph'))
   .linkDirectionalParticleWidth(1.6)
   .linkDirectionalParticleSpeed(0.005)
   .showNavInfo(false)
-  // Bubbles are not draggable: pressing one used to restart the physics (the whole graph reshuffled under the pointer) and
-  // dragging Home unpinned it from the centre. Dragging anywhere now just rotates the graph, on mouse and touch alike.
-  .enableNodeDrag(false)
+  // Bubbles are draggable with elastic spring-back; Home stays pinned at the centre.
+  .enableNodeDrag(true)
+  .onNodeDrag(n => {
+    draggingNode = true;
+    if (n.kind === 'home') { n.fx = 0; n.fy = 0; n.fz = 0; n.x = 0; n.y = 0; n.z = 0; }
+  })
+  .onNodeDragEnd(n => {
+    draggingNode = false;
+    if (n.kind === 'home') { n.fx = 0; n.fy = 0; n.fz = 0; }
+    else { n.fx = undefined; n.fy = undefined; n.fz = undefined; }
+  })
   .warmupTicks(120).cooldownTicks(0)   // first pass: work the layout out up front, so it can be framed before anything is drawn
   .onEngineStop(endSettling);
 // Spacing: the sections push each other (and everything) apart harder than pages and tags do, and sit further from the centre.
-Graph.d3Force('charge').strength(n => n.kind === 'section' ? -420 : n.kind === 'home' ? -300 : -110);
-Graph.d3Force('link').distance(l => l.type === 'hub' ? 130 : l.type === 'belongs' ? 70 : l.type === 'tag' ? 45 : 80);
+if (Graph.controls()) { Graph.controls().autoRotateSpeed = 0.45; Graph.controls().enableDamping = true; }
+Graph.d3Force('charge').strength(n => n.kind === 'section' ? -240 : n.kind === 'home' ? -180 : -75);
+Graph.d3Force('link').distance(l => l.type === 'hub' ? 88 : l.type === 'belongs' ? 52 : l.type === 'tag' ? 32 : 65);
 // No two bubbles may overlap in space. The layout does not need this today (nothing touches), but it keeps a new page or
 // tag from ever settling inside another bubble, Home included. A pinned node (Home) never moves; the other one gives way.
 Graph.d3Force('collide', (() => {
@@ -541,7 +602,7 @@ Graph.d3Force('collide', (() => {
 })());
 
 function refresh() {
-  Graph.backgroundColor(S().vars.bg);
+  Graph.backgroundColor('rgba(0,0,0,0)');
   Graph.nodeColor(nodeColor).linkColor(linkColor).linkWidth(linkWidth)
     .linkDirectionalParticleColor(() => S().particle)
     .linkDirectionalParticles(l => opt.motion === 'flow' && l.type === 'ref' ? 2 : 0);
@@ -549,7 +610,7 @@ function refresh() {
 // Framing: the graph is zoomed so it fills about 65% of the window height (never more than 80% of its width),
 // and centred. It is measured from where the bubbles actually land on screen, so it does not depend on the
 // layout, the window size or the machine.
-const FILL_H = 0.65, FILL_W = 0.8;
+const FILL_H = 0.70, FILL_W = 0.82;
 const reduceMotion = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 let homeDir = null, homeUp = null;   // the opening viewing angle, so that Home can bring it back
 function viewRegion() {
@@ -648,7 +709,7 @@ function overviewPose(region) {
 const headerBottom = () => Math.ceil(document.getElementById('top').getBoundingClientRect().bottom);
 function uiRects(region) {
   // The header's name, invitation and controls, and the Latest panel: bubbles should not sit under them.
-  const rs = ['latest'].map(id => document.getElementById(id)).concat([...document.querySelectorAll('.brand, .lede, header .seg, header .btn, header .search, header .help')])
+  const rs = ['latest', 'legend', 'navbtns'].map(id => document.getElementById(id)).concat([...document.querySelectorAll('.brand, .lede, header .seg, header .btn, header .search, header .help')])
     .filter(e => e && getComputedStyle(e).display !== 'none').map(e => e.getBoundingClientRect());
   return region ? rs.filter(r => r.left < region.w) : rs;
 }
@@ -699,8 +760,11 @@ function sizeGraph() {
 const panel = document.getElementById('panel'), panelBody = document.getElementById('panelBody');
 function fmtDate(d) { if (!d) return ''; const [y, m, day] = d.split('-'); return `${Number(day)} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(m) - 1]} ${y}`; }
 let lastFocus = null;   // what had focus before the page opened, so closing it can give focus back
-function openPage(id, fromHash) {
+let openId = null;           // the page shown in the panel
+const scrollPos = {};        // where the reader got to in each page they have left without closing it (for Back / Forward)
+function openPage(id, fromHash, fresh) {
   const n = byId[id]; if (!n || n.kind !== 'page') return;
+  const sameOpen = panel.classList.contains('open') && openId === id, keepTop = sameOpen ? panelBody.scrollTop : 0;   // a page that is already open keeps its place
   setHelp(false); setOptions(false);   // their cards would only end up under the reading panel
   if (!panel.classList.contains('open')) { const a = document.activeElement; lastFocus = a && a !== document.body && !panel.contains(a) ? a : null; }
   if (!document.body.classList.contains('reading') && !document.body.classList.contains('listmode')) readStart = { dir: Graph.camera().position.clone().sub(Graph.controls().target).normalize(), up: Graph.camera().up.clone() };
@@ -712,6 +776,10 @@ function openPage(id, fromHash) {
     <div class="chips">${n.tags.map(t => `<button class="chip" data-tag="${t}">#${t}</button>`).join('')}</div>
     <div class="content">${(window.PAGES_DATA[n.id] || {}).html || ''}</div>
     <div class="connected"><h4>Connected to</h4>${others.length ? others.map(o => `<button data-open="${o.id}">${o.title}<span>${SECTIONS[o.section].title}</span></button>`).join('') : '<div class="meta">Nothing yet</div>'}</div>`;
+  openId = id;
+  panelBody.scrollTop = keepTop;     // a different page starts at its top (the scroller is the panel body, not the window)
+  if (fromHash && !fresh && !sameOpen && scrollPos[id]) panelBody.scrollTop = scrollPos[id];   // Back / Forward: back to where they were
+  syncTop();
   panel.classList.add('open'); document.body.classList.add('reading');
   if (!fromHash) { try { history.replaceState(null, '', '#/read/' + id); } catch (e) {} }
   setHighlight(n);                   // the open page is the active node, and stays so while its panel is open
@@ -719,7 +787,7 @@ function openPage(id, fromHash) {
   // zoom floor then apply as when a page is opened by a click.
   whenSettled(() => { if (selectedNode === n && panel.classList.contains('open')) framePage(n, 800); });
 }
-function closePanel(opts) { const back0 = lastFocus; lastFocus = null; panel.classList.remove('open'); document.body.classList.remove('reading'); setHighlight(null); const back = opts && opts.restoreAngle ? true : readStart; readStart = null; fitView(900, back);
+function closePanel(opts) { if (openId) delete scrollPos[openId]; openId = null; const back0 = lastFocus; lastFocus = null; panel.classList.remove('open'); document.body.classList.remove('reading'); setHighlight(null); const back = opts && opts.restoreAngle ? true : readStart; readStart = null; fitView(900, back);
   if (!(opts && opts.keepAddress)) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }   // keepAddress: the browser already moved the address (Back / Forward), so leave it and the history alone
   if (back0 && document.contains(back0) && !(opts && opts.restoreAngle)) back0.focus({ preventScroll: true }); }
 // Home: the centre bubble and the name in the top-left both do this. Close any page, clear the
@@ -738,9 +806,14 @@ panelBody.addEventListener('click', e => {
     if (h) { h.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' }); h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
     return;
   }
+  const lk = e.target.closest('a[href^="#/read/"]');   // a link to another page: open it from the top, and let Back return here
+  if (lk && !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button)) {
+    let id = null; try { id = decodeURIComponent(lk.getAttribute('href').slice(7)); } catch (err) {}
+    if (id && byId[id] && byId[id].kind === 'page') { e.preventDefault(); if (location.hash !== lk.getAttribute('href')) { try { history.pushState(null, '', lk.getAttribute('href')); } catch (err) {} } openPage(id, true, true); return; }
+  }
   const t = e.target.closest('[data-tag],[data-open]'); if (!t) return;
   if (t.dataset.open) openPage(t.dataset.open);
-  else { panel.classList.remove('open'); document.body.classList.remove('reading'); setView('graph'); pinNode(byId['tag:' + t.dataset.tag]); }
+  else { if (openId) delete scrollPos[openId]; openId = null; panel.classList.remove('open'); document.body.classList.remove('reading'); setView('graph'); pinNode(byId['tag:' + t.dataset.tag]); }
 });
 document.getElementById('closeBtn').onclick = closePanel;
 document.getElementById('copyBtn').onclick = async e => {
@@ -748,6 +821,30 @@ document.getElementById('copyBtn').onclick = async e => {
   catch (err) { e.target.textContent = 'Copy failed'; }
   setTimeout(() => e.target.textContent = 'Copy link', 1500);
 };
+
+// ---------- reading size, scroll position and Back to top ----------
+const toTop = document.getElementById('toTop'), expandBtn = document.getElementById('expandBtn');
+const TOP_AT = 360;   // how far down the article before Back to top shows
+function syncTop() { toTop.classList.toggle('on', panelBody.scrollTop > TOP_AT); }
+panelBody.addEventListener('scroll', () => { if (openId) scrollPos[openId] = panelBody.scrollTop; syncTop(); }, { passive: true });
+toTop.onclick = () => {
+  panelBody.scrollTo({ top: 0, behavior: reduceMotion() ? 'auto' : 'smooth' });
+  const h = panelBody.querySelector('h1'); if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }   // keep keyboard focus in the article
+};
+// Expanded reading size: kept for the visit (and the browser session), shared by every article.
+let wide = false; try { wide = sessionStorage.getItem('readWide') === '1'; } catch (e) {}
+function paintExpand() { document.body.classList.toggle('expanded', wide); const t = wide ? 'Restore reading panel size' : 'Expand reading panel'; expandBtn.setAttribute('aria-label', t); expandBtn.title = t; }
+function setWide(on) {
+  // Remember the block at the top of the view and how far into it the reader is, change the width, then put that block back where it was.
+  const top = panelBody.getBoundingClientRect().top, keep = panelBody.scrollTop > 0 ? [...panelBody.querySelectorAll('h1, .meta, .chips, .content > *, .connected')].find(el => el.getBoundingClientRect().bottom > top + 1) : null;
+  const frac = keep ? Math.max(0, Math.min(1, (top - keep.getBoundingClientRect().top) / (keep.getBoundingClientRect().height || 1))) : 0;
+  wide = on; try { sessionStorage.setItem('readWide', on ? '1' : '0'); } catch (e) {} paintExpand();
+  if (keep) { const r = keep.getBoundingClientRect(); panelBody.scrollTop += r.top - (top - frac * r.height); }
+  syncTop();
+  if (panel.classList.contains('open') && selectedNode && selectedNode.kind === 'page') framePage(selectedNode, 600);   // the graph has less (or more) room beside the panel
+}
+expandBtn.onclick = () => setWide(!wide);
+paintExpand();
 
 // ---------- latest and list ----------
 // Both are real links (so they can be reached with Tab and opened in the usual way); a plain click opens the page in the panel.
@@ -796,14 +893,23 @@ document.getElementById('resetOpt').onclick = () => {
   opt = Object.assign({}, DEFAULTS);
   applyOptions(depthChanged ? 'depth' : layoutChanged ? 'layout' : null);
 };
+// ---------- legend, counts and the corner buttons ----------
+const legendEl = document.getElementById('legend');
+legendEl.innerHTML = Object.keys(SECTIONS).map(k => `<button type="button" data-sec="${k}"><span class="dot"></span>${SECTIONS[k].title}<span class="n">${pageNodes.filter(p => p.section === k).length}</span></button>`).join('');
+legendEl.addEventListener('click', e => { const b = e.target.closest('[data-sec]'); if (b) { setView('graph'); activateNode(byId['section:' + b.dataset.sec], e.detail === 0); } });
+const paintLegend = () => legendEl.querySelectorAll('[data-sec]').forEach(b => { b.firstChild.style.background = sectionColor(b.dataset.sec); });
+{ const conn = links.filter(l => l.source !== 'home' && l.target !== 'home').length, tags = nodes.filter(n => n.kind === 'tag').length, pl = (k, w) => `<b>${k}</b> ${w}${k === 1 ? '' : 's'}`;
+  document.getElementById('stats').innerHTML = [pl(pageNodes.length, 'page'), pl(Object.keys(SECTIONS).length, 'section'), pl(tags, 'tag'), pl(conn, 'connection')].join(' · '); }
+document.getElementById('homeBtn').onclick = goHome;
+document.getElementById('resetBtn').onclick = () => { if (panel.classList.contains('open') && selectedNode && selectedNode.kind === 'page') framePage(selectedNode, 700); else fitView(700, true); };   // a fresh frame at the opening angle (beside the page, if one is open)
 function applyOptions(changed) {
   const st = S();
   Object.entries(st.vars).forEach(([k, v]) => document.documentElement.style.setProperty('--' + k, v));
   document.body.classList.toggle('split', opt.layout === 'split');
   document.querySelectorAll('#options .seg').forEach(seg => seg.querySelectorAll('[data-v]').forEach(b => b.classList.toggle('on', opt[seg.dataset.opt] === b.dataset.v)));
   document.getElementById('styleHint').textContent = st.hint;
-  try { localStorage.setItem('portal-appearance', JSON.stringify(opt)); } catch (e) {}
-  renderList(); refresh(); sizeGraph(); measureHeader();
+  try { localStorage.setItem('portal-appearance-v2', JSON.stringify(opt)); } catch (e) {}
+  renderList(); paintLegend(); refresh(); sizeGraph(); measureHeader();
   if (changed === 'depth') { Graph.numDimensions(opt.depth === 'd2' ? 2 : 3); setTimeout(() => fitView(900), 1600); }
   if (changed === 'layout') setTimeout(() => fitView(600), 300);
 }
@@ -900,7 +1006,7 @@ const makeEl = cls => { const d = document.createElement('div'); d.className = c
 // The five sections, plus the centre bubble, which is the Home button.
 // Page names are made too, but only shown for the pages of a section that has been clicked.
 const labels = [...nodes.filter(n => n.kind === 'home'), ...sectionNodes, ...nodes.filter(n => n.kind === 'page')].map(n => { const el = makeEl(n.kind === 'page' ? 'nlabel pagelabel' : 'nlabel'); el.textContent = n.kind === 'home' ? 'Home' : n.title; return { n, el, spot: 0 }; });
-const showsLabel = n => n.kind !== 'page' || (!!selectedNode && selectedNode.kind === 'section' && hiNodes.has(n));
+const showsLabel = n => n.kind !== 'page' || pageNodes.length <= 15 || (!!selectedNode && selectedNode.kind === 'section' && hiNodes.has(n));
 // Rings: home (always on, quiet), hover (thin), selected (solid, stays), keyboard focus (dashed). Home's own ring is
 // a soft halo hugging the bubble; the other three sit just outside it, so all four stay distinguishable on Home.
 const rings = { home: makeEl('ring homering'), hover: makeEl('ring hover'), selected: makeEl('ring selected'), focus: makeEl('ring focus') };
@@ -1094,7 +1200,10 @@ function placePeek(all, nameBoxes) {
 function drawOverlays() {
   requestAnimationFrame(drawOverlays);
   if (document.body.classList.contains('listmode')) return;
-  const cam = Graph.camera(), rect = graphEl.getBoundingClientRect(), h = Graph.height();
+  const cam = Graph.camera(), ctl = Graph.controls(), rect = graphEl.getBoundingClientRect(), h = Graph.height();
+  if (ctl && 'autoRotate' in ctl) {
+    ctl.autoRotate = opt.motion === 'flow' && opt.depth === 'd3' && !reduceMotion() && !hoverNode && !pinnedNode && !ptr.down && !draggingNode && !document.body.classList.contains('reading');
+  }
   camMoving = !!lastCam && cam.position.distanceTo(lastCam) > 0.03; lastCam = cam.position.clone();
   // Hover follows the mouse even when the graph moves under a still pointer (settling, rotating, zooming).
   if (ptr.inside && ptr.type !== 'touch' && !ptr.down) {
@@ -1182,6 +1291,21 @@ if (window.ResizeObserver) new ResizeObserver(measureHeader).observe(document.ge
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(measureHeader);
 measureHeader();
 requestAnimationFrame(drawOverlays);
+
+// ---------- quotes ----------
+function renderQuote(section, tags = []) {
+  const qs = window.QUOTES_DATA || [];
+  if (!qs.length) return;
+  const pool = qs.filter(q =>
+    (section && q.sections && q.sections.includes(section)) ||
+    (tags && tags.some(t => q.tags && q.tags.includes(t)))
+  );
+  const list = pool.length ? pool : qs;
+  const pick = list[Math.floor(Math.random() * list.length)];
+  const el = document.getElementById('sideQuote');
+  if (el) el.innerHTML = `<blockquote>“${esc(pick.text)}”</blockquote>${pick.by ? `<cite>— ${esc(pick.by)}</cite>` : ''}`;
+}
+renderQuote();
 
 // ---------- start ----------
 // A shared link like #/read/projects/job-copilot opens that page.
