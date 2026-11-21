@@ -86,8 +86,8 @@
   #latest { position: fixed; left: 20px; bottom: 20px; width: 290px; padding: 0; z-index: 4; }
   #latest summary { display: flex; align-items: center; gap: 8px; padding: 12px 16px 6px; cursor: pointer; list-style: none; }
   #latest summary::-webkit-details-marker { display: none; }
-  #latest summary::after { content: ''; margin-left: auto; width: 7px; height: 7px; border-right: 1.5px solid var(--text-2); border-bottom: 1.5px solid var(--text-2); transform: rotate(45deg) translateY(-2px); transition: transform .15s ease; }
-  #latest[open] summary::after { transform: rotate(-135deg) translate(-2px, -1px); }
+  #latest summary::after { content: ''; margin-left: auto; width: 7px; height: 7px; border-right: 1.5px solid var(--text-2); border-bottom: 1.5px solid var(--text-2); transform: rotate(-135deg) translate(-2px, -1px); transition: transform .15s ease; }   /* closed: points up, the way the card opens */
+  #latest[open] summary::after { transform: rotate(45deg) translateY(-2px); }                  /* open: points down, the way it closes */
   #latest .latestItems { padding: 0 16px 8px; }
   #latest .peekline { display: none; }
   h3.lbl, .latest .lbl { margin: 0; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-2); font-weight: 600; }
@@ -750,10 +750,14 @@ function uiRects(region) {
 function overlapScore(list, sel, region) {
   const ds = discsOf(list), h = Graph.height(); let score = 0;
   const ui = uiRects(region);
+  // A section's own pages should be clearly apart from each other and from the section bubble, so names can be read and they can be counted.
+  const kids = sel && sel.kind === 'section' ? new Set([...sel.neighbors].filter(x => x.kind === 'page')) : null;
   ds.forEach(c => ui.forEach(b => { const d = Math.hypot(c.x - Math.max(b.left, Math.min(c.x, b.right)), c.y - Math.max(b.top, Math.min(c.y, b.bottom))); if (d < c.r + 6) score += 14 + (c.r + 6 - d); }));
   for (let i = 0; i < ds.length; i++) for (let j = i + 1; j < ds.length; j++) {
-    const a = ds[i], b = ds[j], gap = a.r + b.r + 4 - Math.hypot(a.x - b.x, a.y - b.y);
+    const a = ds[i], b = ds[j], kidPair = !!kids && kids.has(a.n) && kids.has(b.n), kidSec = !!kids && ((a.n === sel && kids.has(b.n)) || (b.n === sel && kids.has(a.n)));
+    const gap = a.r + b.r + (kidPair || kidSec ? 22 : 4) - Math.hypot(a.x - b.x, a.y - b.y);
     if (gap <= 0) continue;
+    if (kidPair || kidSec) { score += gap * (kidSec ? 12 : 9); continue; }
     const home = a.n.kind === 'home' || b.n.kind === 'home', pick = a.n === sel || b.n === sel, sec = a.n.kind === 'section' || b.n.kind === 'section';
     score += gap * (home && pick ? 14 : (home || pick) && sec ? 10 : (home || pick) ? 6 : 2);
   }
@@ -770,7 +774,7 @@ function framePage(n, ms) {
   const minDist = full ? full.pos.distanceTo(full.look) * 0.88 : 0;   // never closer than 88% of the overview distance
   // Options, cheapest first: a small turn of the view, a slightly smaller graph, or a small lift, before a bigger turn.
   const opts = [], H = Graph.height();
-  [0.65, 0.58, 0.5, 0.44].forEach(fill => [0, -0.05, -0.1].forEach(lift => [0, 12, -12, 24, -24, 40, -40].forEach(yaw => [0, 10, -10].forEach(pitch =>
+  [0.65, 0.58, 0.5, 0.44].forEach(fill => [0, -0.05, -0.1].forEach(lift => (n.kind === 'section' ? [0, 12, -12, 24, -24, 40, -40, 60, -60, 80, -80] : [0, 12, -12, 24, -24, 40, -40]).forEach(yaw => (n.kind === 'section' ? [0, 10, -10, 22, -22] : [0, 10, -10]).forEach(pitch =>
     opts.push({ fill, lift, yaw, pitch, cost: Math.abs(yaw) + Math.abs(pitch) + (0.65 - fill) * 160 + Math.abs(lift) * 100 })))));
   opts.sort((a, b) => a.cost - b.cost);
   let best = null;
@@ -778,9 +782,9 @@ function framePage(n, ms) {
     setPose(from);
     const to = fitSubset(list, region, o.fill, o.lift * H, { yaw: o.yaw * Math.PI / 180, pitch: o.pitch * Math.PI / 180 }, minDist);
     if (!to) continue;
-    const sc = overlapScore(list, n, region);
-    if (!best || sc < best.sc - 0.5) best = { to, sc };
-    if (sc === 0) break;   // the cheapest option that leaves nothing overlapping, cut off or under a panel
+    const sc = overlapScore(list, n, region), tot = sc + (n.kind === 'section' ? 0.25 * (Math.abs(o.yaw) + Math.abs(o.pitch)) : 0);   // a section may turn the view further, but a bigger turn has to earn it
+    if (!best || tot < best.tot - 0.5) best = { to, tot };
+    if (sc <= 0.5) break;   // the cheapest option that leaves nothing overlapping, cut off or under a panel
   }
   if (!best) { setPose(from); return; }
   glide(best.to, from, ms);
